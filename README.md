@@ -1,4 +1,5 @@
-# ServerFuser
+<img width="2000" height="1000" alt="ServerFuser_Full" src="https://github.com/user-attachments/assets/d351b6a1-89a9-4b2f-ad96-155aee08a58a" />
+
 [EXPERIMENTAL] Trying to make multiple distributed NeoForge Minecraft servers act like 1 big Minecraft server.
 
 # TO DO:
