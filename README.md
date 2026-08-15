@@ -4,8 +4,8 @@
 [EXPERIMENTAL] Trying to make multiple distributed NeoForge Minecraft servers act like 1 big Minecraft server.
 
 # TO DO:
-- [ ] Connect 4 servers to Velocity
-- [ ] Share chat between 4 servers
+- [x] Connect 2 servers to Velocity
+- [ ] Share chat between 2 servers
 - [ ] Share the same seed to 4 servers and tell the servers what chunks they need to generate (Quadrant Offset System)
 - [ ] Transfer players when they reach server border
 - [ ] Add player data persistence between servers
