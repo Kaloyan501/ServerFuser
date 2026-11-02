@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.kaloyandonev.serverfuser.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "BroadcastChatMessage"
+  ],
+  "client": [
+    "MixinTitleScreen"
+  ],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

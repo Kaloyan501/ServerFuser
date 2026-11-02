@@ -1,6 +1,7 @@
 package com.kaloyandonev.serverFuserVelocity;
 
 import com.google.inject.Inject;
+import com.kaloyandonev.serverFuserVelocity.Interconnect.TCP;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.plugin.Plugin;
@@ -10,10 +11,14 @@ import org.slf4j.Logger;
 public class ServerFuserVelocity {
 
     @Inject
-    private Logger logger;
+    public static Logger logger;
 
     @Subscribe
     public void onProxyInitialization(ProxyInitializeEvent event) {
-        // Plugin initialization logic goes here
+        try {
+            TCP.CreateInterconnectSocket(6666);
+        } catch (Exception e) {
+            logger.error("Interconnect has blown up.");
+        }
     }
 }
