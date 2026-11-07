@@ -54,9 +54,11 @@ public final class InterconnectClient {
                     out.flush();
                 }
             } catch (InterruptedException e) {
+                e.printStackTrace();
                 return;
             } catch (IOException e) {
                 // connection failed or dropped: fall through to backoff
+                e.printStackTrace();
             }
             try { Thread.sleep(backoff); } catch (InterruptedException e) { return; }
             backoff = Math.min(backoff * 2, 15000);

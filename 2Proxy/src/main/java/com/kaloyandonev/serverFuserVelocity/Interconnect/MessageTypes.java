@@ -9,14 +9,16 @@ public final class MessageTypes {
     //[long uuidMSB][long uuidLSB][byte[32] sha256][int nbtLen][nbt bytes]
     public static final byte PLAYERDATA = 2;
     //[uuid][byte status]
-    /*
-        Byte status -
-            00000000 - OK
-            00000001 - Write Failed
-            00000002 - Checksum Invalid
-            00000003 - Invalid Player
-     */
     public static final byte PLAYERDATAACK = 3;
+
+    //PLAYERDATAACK statuses
+    public static final byte STATUS_OK = 0;
+    public static final byte STATUS_WRITE_FAILED = 1;
+    public static final byte STATUS_CHECKSUM_INVALID = 2;
+    public static final byte STATUS_INVALID_PLAYER = 3;
+
+    //[long uuidMSB][long uuidLSB][byte[32] sha256][int nbtLen][nbt bytes]
+    public static final byte MOBDATA = 2;
 
     private MessageTypes() {}
 }

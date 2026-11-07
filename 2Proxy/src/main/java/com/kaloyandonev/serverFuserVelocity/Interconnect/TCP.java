@@ -7,6 +7,8 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.UUID;
 
@@ -58,7 +60,47 @@ public class TCP {
                     nbt = new byte[nbtLen];
                     d.readFully(nbt);
 
+                    try {
+                        byte[] calcSha = MessageDigest.getInstance("SHA-256").digest(nbt);
+
+                        if (!MessageDigest.isEqual(calcSha, sha)) {
+                            throw new IOException("SHA Checksum invalid. Throwing data out.");
+                        }
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        return;
+                    }
+
+
                     System.out.println(String.format("Got player data for playerUUID: %s with length %d and sha %s", playerUUID.toString(), nbtLen, HexFormat.of().formatHex(sha)));
+                    System.out.println(HexFormat.of().formatHex(nbt));
+                }
+                if (id == MessageTypes.MOBDATA) {
+                    UUID mobUUID = null;
+                    byte[] sha = new byte[32];
+                    int nbtLen = 0;
+                    byte[] nbt = null;
+                    mobUUID = new UUID(d.readLong(), d.readLong());
+                    d.readFully(sha);
+                    nbtLen = d.readInt();
+                    if (nbtLen < 0 || nbtLen > d.available()) throw new IOException("bad nbt lenght " + nbtLen);
+                    nbt = new byte[nbtLen];
+                    d.readFully(nbt);
+
+                    try {
+                        byte[] calcSha = MessageDigest.getInstance("SHA-256").digest(nbt);
+
+                        if (!MessageDigest.isEqual(calcSha, sha)) {
+                            throw new IOException("SHA Checksum invalid. Throwing data out.");
+                        }
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        return;
+                    }
+
+                    System.out.println(String.format("Got mob data for playerUUID: %s with length %d and sha %s", mobUUID.toString(), nbtLen, HexFormat.of().formatHex(sha)));
                     System.out.println(HexFormat.of().formatHex(nbt));
                 }
             }

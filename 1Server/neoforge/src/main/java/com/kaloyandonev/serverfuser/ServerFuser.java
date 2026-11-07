@@ -2,10 +2,10 @@ package com.kaloyandonev.serverfuser;
 
 
 import com.kaloyandonev.serverfuser.Interconnect.InterconnectClient;
-import com.kaloyandonev.serverfuser.helpers.transfer.SendSavefile;
+import com.kaloyandonev.serverfuser.helpers.transfer.ShardTransfer;
 import com.mojang.brigadier.Command;
-import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.UuidArgument;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -56,7 +56,14 @@ public class ServerFuser {
                                 .then(Commands.argument("uuid", UuidArgument.uuid())
                                         .executes(ctx -> {
                                             UUID uuid = UuidArgument.getUuid(ctx, "uuid");
-                                            SendSavefile.sendSaveFile(uuid);
+                                            ShardTransfer.sendSaveFile(uuid);
+                                            return Command.SINGLE_SUCCESS;
+                                        })))
+                        .then(Commands.literal("sendMob")
+                                .then(Commands.argument("entity", EntityArgument.entity())
+                                        .executes(ctx -> {
+                                            UUID uuid = EntityArgument.getEntity(ctx, "entity").getUUID();
+                                            ShardTransfer.sendMob(uuid);
                                             return Command.SINGLE_SUCCESS;
                                         })))
         );

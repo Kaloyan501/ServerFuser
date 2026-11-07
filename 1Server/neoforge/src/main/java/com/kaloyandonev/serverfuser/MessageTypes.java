@@ -17,5 +17,8 @@ public final class MessageTypes {
     public static final byte STATUS_CHECKSUM_INVALID = 2;
     public static final byte STATUS_INVALID_PLAYER = 3;
 
+    //[long uuidMSB][long uuidLSB][byte[32] sha256][int nbtLen][nbt bytes]
+    public static final byte MOBDATA = 2;
+
     private MessageTypes() {}
 }
