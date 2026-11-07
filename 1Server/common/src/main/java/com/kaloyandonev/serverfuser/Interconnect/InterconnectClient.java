@@ -7,7 +7,7 @@ import java.util.concurrent.*;
 public final class InterconnectClient {
     private final String host;
     private final int port;
-    private final BlockingQueue<byte[]> outbox = new LinkedBlockingQueue<>(1024); // bounded
+    private static final BlockingQueue<byte[]> outbox = new LinkedBlockingQueue<>(1024); // bounded
     private volatile boolean running = true;
     private Thread thread;
 
@@ -25,7 +25,7 @@ public final class InterconnectClient {
     }
 
     /** Safe to call from any thread. Returns false if the buffer is full. */
-    public boolean send(byte[] message) {
+    public static boolean send(byte[] message) {
         return outbox.offer(message);
     }
 

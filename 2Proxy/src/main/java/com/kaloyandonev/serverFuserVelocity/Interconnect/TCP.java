@@ -7,6 +7,7 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.HexFormat;
 import java.util.UUID;
 
 public class TCP {
@@ -44,6 +45,21 @@ public class TCP {
                     d.readFully(json);
                     String jsonString = new String(json, StandardCharsets.UTF_8);
                     System.out.println(String.format("Got chat message from shard: %s %s %s %s", senderId, senderName, chatTypeKey, jsonString));
+                }
+                if (id == MessageTypes.PLAYERDATA) {
+                    UUID playerUUID = null;
+                    byte[] sha = new byte[32];
+                    int nbtLen = 0;
+                    byte[] nbt = null;
+                    playerUUID = new UUID(d.readLong(), d.readLong());
+                    d.readFully(sha);
+                    nbtLen = d.readInt();
+                    if (nbtLen < 0 || nbtLen > d.available()) throw new IOException("bad nbt length " + nbtLen);
+                    nbt = new byte[nbtLen];
+                    d.readFully(nbt);
+
+                    System.out.println(String.format("Got player data for playerUUID: %s with length %d and sha %s", playerUUID.toString(), nbtLen, HexFormat.of().formatHex(sha)));
+                    System.out.println(HexFormat.of().formatHex(nbt));
                 }
             }
         } catch (EOFException e) {

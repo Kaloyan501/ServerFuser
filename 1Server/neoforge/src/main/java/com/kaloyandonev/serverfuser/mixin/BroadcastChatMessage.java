@@ -1,7 +1,6 @@
 package com.kaloyandonev.serverfuser.mixin;
 
-import com.kaloyandonev.serverfuser.ExampleMod;
-import com.kaloyandonev.serverfuser.Interconnect.InterconnectClient;
+import com.kaloyandonev.serverfuser.ServerFuser;
 import com.kaloyandonev.serverfuser.MessageTypes;
 import net.minecraft.network.chat.ChatType;
 import net.minecraft.network.chat.Component;
@@ -20,7 +19,6 @@ import javax.annotation.Nullable;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -63,7 +61,7 @@ public abstract class BroadcastChatMessage {
             d.writeUTF(chatTypeKey);
             d.writeInt(json.length);
             d.write(json);
-            ExampleMod.interconnectClient.send(buf.toByteArray());
+            ServerFuser.interconnectClient.send(buf.toByteArray());
         } catch (IOException e) {
             e.printStackTrace();
         }
