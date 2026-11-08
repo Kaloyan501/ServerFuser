@@ -2,6 +2,7 @@ package com.kaloyandonev.serverfuser.helpers.transfer;
 
 import com.kaloyandonev.serverfuser.Interconnect.InterconnectClient;
 import com.kaloyandonev.serverfuser.MessageTypes;
+import net.minecraft.SharedConstants;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtUtils;
@@ -14,11 +15,17 @@ import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.UUID;
 
+import static com.kaloyandonev.serverfuser.ServerFuser.interconnectClient;
+import com.kaloyandonev.serverfuser.config.Config;
+
 public class ShardTransfer {
+
     public static void sendSaveFile(UUID uuid){
         MinecraftServer s = ServerLifecycleHooks.getCurrentServer();
 
@@ -55,7 +62,7 @@ public class ShardTransfer {
         });
     }
 
-    public static void sendMob(UUID uuid){
+    public static void sendEntity(UUID uuid){
         MinecraftServer s = ServerLifecycleHooks.getCurrentServer();
         if (s == null) return;
 
@@ -81,7 +88,7 @@ public class ShardTransfer {
 
             var buf = new ByteArrayOutputStream(1 + 16 + 32 + 4 + nbt.length);
             var d = new DataOutputStream(buf);
-            d.writeByte(MessageTypes.MOBDATA);
+            d.writeByte(MessageTypes.ENTITYDATA);
             d.writeLong(uuid.getMostSignificantBits());
             d.writeLong(uuid.getLeastSignificantBits());
             d.write(sha);

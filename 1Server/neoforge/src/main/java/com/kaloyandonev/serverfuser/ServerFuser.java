@@ -13,8 +13,9 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
-import java.nio.ByteBuffer;
 import java.util.UUID;
+
+import static com.kaloyandonev.serverfuser.config.Config.loadOrCreateShardId;
 
 @Mod(Constants.MOD_ID)
 @EventBusSubscriber(modid = Constants.MOD_ID)
@@ -32,19 +33,7 @@ public class ServerFuser {
         Constants.LOG.info("Hello NeoForge world!");
         CommonClass.init();
 
-
         interconnectClient.start();
-
-        UUID uuid = UUID.randomUUID();
-
-        byte[] body = ByteBuffer.allocate(17)
-                .put(MessageTypes.HANDSHAKE)
-                .putLong(uuid.getMostSignificantBits())
-                .putLong(uuid.getLeastSignificantBits())
-                .array();
-
-        interconnectClient.send(body);
-
     }
 
     @SubscribeEvent // on the game event bus
@@ -63,7 +52,7 @@ public class ServerFuser {
                                 .then(Commands.argument("entity", EntityArgument.entity())
                                         .executes(ctx -> {
                                             UUID uuid = EntityArgument.getEntity(ctx, "entity").getUUID();
-                                            ShardTransfer.sendMob(uuid);
+                                            ShardTransfer.sendEntity(uuid);
                                             return Command.SINGLE_SUCCESS;
                                         })))
         );
