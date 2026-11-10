@@ -4,7 +4,7 @@ public final class MessageTypes {
 
     public static final int PROTOCOL_VER = 1;
 
-    // [int length = 17][byte 0 = HANDSHAKE][8 bytes UUID MSB][8 bytes UUID LSB][int protocolVer][int dataVer]
+    // [int length = 17][byte 0 = HANDSHAKE][8 bytes UUID MSB][8 bytes UUID LSB][int protocolVer][int dataVer][byte[32] modHashSet]
     public static final byte HANDSHAKE = 0;
     //[int length][byte CHAT][long uuidMSB][long uuidLSB][UTF senderName][UTF chatTypeKey][int jsonLen][UTF-8 bytes of the Component as JSON]
     public static final byte CHAT = 1;

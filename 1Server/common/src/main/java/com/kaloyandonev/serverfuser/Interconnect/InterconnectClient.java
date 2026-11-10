@@ -34,19 +34,20 @@ public final class InterconnectClient {
         }
     }
 
-    private byte[] buildHandshake() {
-        return ByteBuffer.allocate(1 + 16 + 4 + 4)
+    private byte[] buildHandshake(byte[] modHashSet) {
+        return ByteBuffer.allocate(1 + 16 + 4 + 4 + 32)
                 .put(MessageTypes.HANDSHAKE)
                 .putLong(shardId.getMostSignificantBits())
                 .putLong(shardId.getLeastSignificantBits())
                 .putInt(MessageTypes.PROTOCOL_VER)
                 .putInt(SharedConstants.getCurrentVersion().getDataVersion().getVersion())
+                .put(modHashSet)
                 .array();
     }
 
-    public void start() {
+    public void start(byte[] modHashSet) {
         System.out.println("[ServerFuser #" + id + "] client started: " + System.identityHashCode(this));
-        thread = new Thread(this::runLoop, "ServerFuser-Interconnect");
+        thread = new Thread(() -> runLoop(modHashSet), "ServerFuser-Interconnect");
         thread.setDaemon(true);
         thread.start();
     }
@@ -61,7 +62,7 @@ public final class InterconnectClient {
         return outbox.offer(message);
     }
 
-    private void runLoop() {
+    private void runLoop(byte[] modHashSet) {
         long backoff = 1000;
         while (running) {
             try (Socket socket = new Socket()) {
@@ -75,7 +76,7 @@ public final class InterconnectClient {
                 var out = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
                 var in  = new DataInputStream(socket.getInputStream());
 
-                byte[] hs = buildHandshake();
+                byte[] hs = buildHandshake(modHashSet);
                 out.writeInt(hs.length);
                 out.write(hs);
                 out.flush();

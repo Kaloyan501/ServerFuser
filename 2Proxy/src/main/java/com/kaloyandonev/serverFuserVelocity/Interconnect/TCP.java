@@ -1,6 +1,5 @@
 package com.kaloyandonev.serverFuserVelocity.Interconnect;
 
-import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 
 import java.io.*;
@@ -10,9 +9,12 @@ import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.UUID;
 
+import static com.kaloyandonev.serverFuserVelocity.Interconnect.InterconnectRuntimeConstants.CONNECTIONS;
 import static com.kaloyandonev.serverFuserVelocity.ServerFuserVelocity.proxy;
 
 public class TCP {
+
+
 
     static boolean isKnownBackend(InetAddress remote) {
         for (RegisteredServer rs : proxy.getAllServers()) {
@@ -45,6 +47,10 @@ public class TCP {
     }
 
     static void handle(Socket socket) {
+
+        SocketAddress remote = socket.getRemoteSocketAddress();
+        ShardConnection conn = null;
+
         try (socket; var input = new DataInputStream(new BufferedInputStream(socket.getInputStream()))) {
             System.out.println("Client connected: " + socket.getRemoteSocketAddress());
             while (true) {
@@ -59,9 +65,47 @@ public class TCP {
                     UUID shardId = new UUID(d.readLong(), d.readLong());
                     int protocolVer = d.readInt();
                     int dataVer = d.readInt();
-                    System.out.println("Handshake from shard " + shardId + " with protocolVer " + protocolVer + " and dataVer " + dataVer);
+                    byte[] modHashSet = new byte[32];
+                    d.readFully(modHashSet);
+
+                    boolean ok;
+                    synchronized (InterconnectRuntimeConstants.class) {
+                        if (!InterconnectRuntimeConstants.baselineSet) {
+                            InterconnectRuntimeConstants.dataVer = dataVer;
+                            InterconnectRuntimeConstants.modHashSet = modHashSet;
+                            InterconnectRuntimeConstants.baselineSet = true;
+                        }
+
+                        System.out.println("Baseline set by shard " + shardId + ": dataVer " + dataVer
+                                + ", modHashSet " + HexFormat.of().formatHex(modHashSet));
+
+                        ok = protocolVer == MessageTypes.PROTOCOL_VER
+                                && dataVer == InterconnectRuntimeConstants.dataVer
+                                && MessageDigest.isEqual(modHashSet, InterconnectRuntimeConstants.modHashSet);
+                    }
+
+                    if (!ok) {
+                        System.out.println("Rejected shard " + shardId + ": handshake mismatch"
+                                + " (protocolVer " + protocolVer + ", dataVer " + dataVer
+                                + ", modHashSet " + HexFormat.of().formatHex(modHashSet) + ")");
+                        return;                       // try-with-resources closes the socket
+                    }
+
+                    conn = new ShardConnection(shardId, socket);
+                    ShardConnection old = CONNECTIONS.put(shardId, conn);
+                    if (old != null) old.close();
+                    System.out.println("Handshake from shard " + shardId + " with protocolVer " + protocolVer
+                            + " and dataVer " + dataVer + " and modHashSet " + HexFormat.of().formatHex(modHashSet));
+
+
                 }
                 if (id == MessageTypes.CHAT) {
+
+                    if (id != MessageTypes.HANDSHAKE && conn == null) {
+                        System.out.println("Packet " + id + " before handshake from " + remote + ", dropping");
+                        return;
+                    }
+
                     UUID senderId = new UUID(d.readLong(), d.readLong());
                     String senderName = d.readUTF();
                     String chatTypeKey = d.readUTF();
@@ -72,6 +116,12 @@ public class TCP {
                     System.out.println(String.format("Got chat message from shard: %s %s %s %s", senderId, senderName, chatTypeKey, jsonString));
                 }
                 if (id == MessageTypes.PLAYERDATA) {
+
+                    if (id != MessageTypes.HANDSHAKE && conn == null) {
+                        System.out.println("Packet " + id + " before handshake from " + remote + ", dropping");
+                        return;
+                    }
+
                     UUID playerUUID = null;
                     byte[] sha = new byte[32];
                     int nbtLen = 0;
@@ -100,6 +150,12 @@ public class TCP {
                     System.out.println(HexFormat.of().formatHex(nbt));
                 }
                 if (id == MessageTypes.ENTITYDATA) {
+
+                    if (id != MessageTypes.HANDSHAKE && conn == null) {
+                        System.out.println("Packet " + id + " before handshake from " + remote + ", dropping");
+                        return;
+                    }
+
                     UUID entityUUID = null;
                     byte[] sha = new byte[32];
                     int nbtLen = 0;
@@ -128,11 +184,16 @@ public class TCP {
                 }
             }
         } catch (EOFException e) {
-            System.out.println("Client disconnected");
+            System.out.println("Client disconnected: " + remote);
             e.printStackTrace();
         } catch (IOException e) {
-            System.out.println("Connection error: " + e);
+            System.out.println("Connection error: " + remote + ": " + e);
             e.printStackTrace();
+        } finally {
+            if (conn != null) {
+                CONNECTIONS.remove(conn.shardId(), conn);
+                System.out.println("Shard " + conn.shardId() + " removed");
+            }
         }
     }
 

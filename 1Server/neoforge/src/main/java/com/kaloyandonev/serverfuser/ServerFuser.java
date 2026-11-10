@@ -11,6 +11,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
 import java.util.UUID;
@@ -33,14 +34,19 @@ public class ServerFuser {
         Constants.LOG.info("Hello NeoForge world!");
         CommonClass.init();
 
-        interconnectClient.start();
+        try {
+            byte[] modSetHash = ModSetHash.compute(FMLPaths.MODSDIR.get());
+            interconnectClient.start(modSetHash);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
-    @SubscribeEvent // on the game event bus
+    @SubscribeEvent
     public static void registerCommands(RegisterCommandsEvent event) {
         event.getDispatcher().register(
                 Commands.literal("serverfuser")
-                        .requires(src -> src.hasPermission(4))          // op-only; it moves player data
+                        .requires(src -> src.hasPermission(4))
                         .then(Commands.literal("sendPlayerFile")
                                 .then(Commands.argument("uuid", UuidArgument.uuid())
                                         .executes(ctx -> {
