@@ -1,7 +1,8 @@
 package com.kaloyandonev.serverfuser.mixin;
 
-import com.kaloyandonev.serverfuser.ServerFuser;
 import com.kaloyandonev.serverfuser.MessageTypes;
+import com.kaloyandonev.serverfuser.ServerFuser;
+//import com.kaloyandonev.serverfuser.MessageTypes;
 import net.minecraft.network.chat.ChatType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.PlayerChatMessage;
