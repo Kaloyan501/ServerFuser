@@ -22,5 +22,12 @@ public final class MessageTypes {
     //[long uuidMSB][long uuidLSB][byte[32] sha256][int nbtLen][nbt bytes]
     public static final byte ENTITYDATA = 4;
 
+    //[UTF-8 status]
+    public static final byte HANDSHAKE_RESPONCE = 5;
+    public static final String HS_OK = "OK";
+    public static final String HS_PROTOCOLVER_MISMATCH = "PROTOCOLVER_MISMATCH";
+    public static final String HS_DATAVER_MISMATCH = "DATAVER_MISMATCH";
+    public static final String HS_MODHASHSET_MISMATCH = "MODHASHSET_MISMATCH";
+
     private MessageTypes() {}
 }

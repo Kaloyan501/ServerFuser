@@ -13,6 +13,9 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
+import net.minecraft.server.MinecraftServer;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 import java.util.UUID;
 
@@ -22,7 +25,14 @@ import static com.kaloyandonev.serverfuser.config.Config.loadOrCreateShardId;
 @EventBusSubscriber(modid = Constants.MOD_ID)
 public class ServerFuser {
 
-    public static InterconnectClient interconnectClient = new InterconnectClient("127.0.0.1", 6666);
+    static volatile boolean fatal = false;
+
+    public static InterconnectClient interconnectClient =
+            new InterconnectClient("127.0.0.1", 6666, () -> {
+                MinecraftServer s = ServerLifecycleHooks.getCurrentServer();
+                if (s != null) s.halt(false);     // rejected later, while running
+                else fatal = true;                // rejected during mod loading: startup will check
+            });
 
     public ServerFuser(IEventBus eventBus) {
 
@@ -62,5 +72,10 @@ public class ServerFuser {
                                             return Command.SINGLE_SUCCESS;
                                         })))
         );
+    }
+
+    @SubscribeEvent
+    public static void onServerAboutToStart(ServerAboutToStartEvent event) {
+        if (fatal) throw new IllegalStateException("ServerFuser: rejected by the interconnect, refusing to start");
     }
 }

@@ -1,5 +1,6 @@
 package com.kaloyandonev.serverfuser.Interconnect;
 
+import com.kaloyandonev.serverfuser.Constants;
 import com.kaloyandonev.serverfuser.MessageTypes;
 import com.kaloyandonev.serverfuser.config.Config;
 import net.minecraft.SharedConstants;
@@ -23,9 +24,14 @@ public final class InterconnectClient {
     private final int id = IDS.incrementAndGet();
     private final UUID shardId;
 
-    public InterconnectClient(String host, int port) {
+    private volatile boolean accepted = false;
+
+    private final Runnable onFatal;
+
+    public InterconnectClient(String host, int port, Runnable onFatal) {
         this.host = host;
         this.port = port;
+        this.onFatal = onFatal;
         System.out.println("[ServerFuser #" + id + "] created");
         try {
             this.shardId = Config.loadOrCreateShardId(Path.of("config", "serverfuser-shard-id.txt"));
@@ -113,12 +119,38 @@ public final class InterconnectClient {
     private void readLoop(DataInputStream in) {
         try {
             while (running) {
-                String msg = in.readUTF();
-                onMessage(msg);
+                int len = in.readInt();
+                if (len < 1 || len > 1_048_576) throw new IOException("bad frame length " + len);
+                byte[] body = new byte[len];
+                in.readFully(body);
+
+                var d = new DataInputStream(new ByteArrayInputStream(body));
+                byte id = d.readByte();
+                onReadPacket(id, d);
             }
-        } catch (IOException ignored) { /* EOF or reset: main loop reconnects */ }
+        } catch (Throwable t) {
+            System.out.println("[ServerFuser] reader ended: " + t);
+        }
     }
 
+    private void onReadPacket(byte id, DataInputStream d) throws IOException {
+        switch (id) {
+            case MessageTypes.HANDSHAKE_RESPONCE -> {
+                String status = d.readUTF();
+                if (status.equals(MessageTypes.HS_OK)) {
+                    accepted = true;
+                    System.out.println("[ServerFuser] Handshake accepted");
+                    Constants.LOG.error("[ServerFuser] Handshake accepted");
+                } else {
+                    System.out.println("[ServerFuser] Rejected by proxy: " + status);
+                    Constants.LOG.error("[ServerFuser] Rejected by proxy: " + status);
+                    running = false;       // stop retrying; the config has to be fixed
+                    onFatal.run();
+                }
+            }
+            default -> System.out.println("[ServerFuser] Unknown packet id " + id);
+        }
+    }
 
     private void onMessage(String msg) {
         // Do something.

@@ -28,6 +28,20 @@ public class TCP {
         return false;
     }
 
+    static void sendHandshakeReply(ShardConnection c, String status) throws IOException {
+        var buf = new ByteArrayOutputStream();
+        var o = new DataOutputStream(buf);
+        o.writeByte(MessageTypes.HANDSHAKE_RESPONCE);
+        o.writeUTF(status);
+        c.send(buf.toByteArray());
+    }
+
+    static void reject(Socket socket, UUID shardId, String status) {
+        System.out.println(status);
+        try { sendHandshakeReply(new ShardConnection(shardId, socket), status); }
+        catch (IOException ignored) { }
+    }
+
     public static void CreateInterconnectSocket(int port) throws IOException{
         try (ServerSocket serverSocket = new ServerSocket(port)) {
             System.out.println("[ServerFuser Interconnect] Listening on port " + port + " ...");
@@ -68,7 +82,9 @@ public class TCP {
                     byte[] modHashSet = new byte[32];
                     d.readFully(modHashSet);
 
-                    boolean ok;
+                    boolean protoFlag;
+                    boolean dataVerFlag;
+                    boolean modHashSetFlag;
                     synchronized (InterconnectRuntimeConstants.class) {
                         if (!InterconnectRuntimeConstants.baselineSet) {
                             InterconnectRuntimeConstants.dataVer = dataVer;
@@ -79,21 +95,41 @@ public class TCP {
                         System.out.println("Baseline set by shard " + shardId + ": dataVer " + dataVer
                                 + ", modHashSet " + HexFormat.of().formatHex(modHashSet));
 
-                        ok = protocolVer == MessageTypes.PROTOCOL_VER
-                                && dataVer == InterconnectRuntimeConstants.dataVer
-                                && MessageDigest.isEqual(modHashSet, InterconnectRuntimeConstants.modHashSet);
+                        protoFlag = protocolVer == MessageTypes.PROTOCOL_VER;
+                        dataVerFlag = dataVer == InterconnectRuntimeConstants.dataVer;
+                        modHashSetFlag = MessageDigest.isEqual(modHashSet, InterconnectRuntimeConstants.modHashSet);
                     }
 
-                    if (!ok) {
+                    /*if (!(protoFlag && dataVerFlag && modHashSetFlag)) {
                         System.out.println("Rejected shard " + shardId + ": handshake mismatch"
                                 + " (protocolVer " + protocolVer + ", dataVer " + dataVer
                                 + ", modHashSet " + HexFormat.of().formatHex(modHashSet) + ")");
                         return;                       // try-with-resources closes the socket
+                    }*/
+
+                    if (!protoFlag){
+                        System.out.println(String.format("Rejected shard %s because of a protocol version mismatch. Expected value: %d, Actual value: %d", shardId, MessageTypes.PROTOCOL_VER, protocolVer));
+                        reject(socket, shardId, MessageTypes.HS_PROTOCOLVER_MISMATCH);
+                        socket.shutdownOutput();
+                        return;
+                    }
+                    if (!dataVerFlag){
+                        System.out.println(String.format("Rejected shard %s because of a data version mismatch. You are most likely trying to connect shard with different Minecraft versions. This is not supported. Expected value: %d, Actual value: %d", shardId, InterconnectRuntimeConstants.dataVer, dataVer));
+                        reject(socket, shardId, MessageTypes.HS_DATAVER_MISMATCH);
+                        socket.shutdownOutput();
+                        return;
+                    }
+                    if (!modHashSetFlag){
+                        System.out.println(String.format("Rejected shard %s because of a mod hash set mismatch. Please make sure that the mods installed on every shard match exactly.", shardId));
+                        reject(socket, shardId, MessageTypes.HS_MODHASHSET_MISMATCH);
+                        socket.shutdownOutput();
+                        return;
                     }
 
                     conn = new ShardConnection(shardId, socket);
                     ShardConnection old = CONNECTIONS.put(shardId, conn);
                     if (old != null) old.close();
+                    sendHandshakeReply(conn, MessageTypes.HS_OK);
                     System.out.println("Handshake from shard " + shardId + " with protocolVer " + protocolVer
                             + " and dataVer " + dataVer + " and modHashSet " + HexFormat.of().formatHex(modHashSet));
 
