@@ -1,7 +1,15 @@
 plugins {
+    id 'java'
     id 'multiloader-loader'
     id 'fabric-loom'
 }
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
 dependencies {
     implementation project(':protocol')
     minecraft "com.mojang:minecraft:${minecraft_version}"

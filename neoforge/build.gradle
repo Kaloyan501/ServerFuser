@@ -1,6 +1,13 @@
 plugins {
+    id 'java'
     id 'multiloader-loader'
     id 'net.neoforged.moddev'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
 }
 
 dependencies {

@@ -1,6 +1,6 @@
 plugins {
     id("java-library")
-    // id("xyz.jpenilla.run-velocity") version "3.1.0"   // needs Gradle 9.7; the root is on 8.10
+    id("xyz.jpenilla.run-velocity") version "3.1.0"
 }
 
 repositories {
@@ -22,4 +22,10 @@ tasks.jar {
     dependsOn(configurations.runtimeClasspath)
     from({ configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) } })
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks {
+    runVelocity {
+        velocityVersion("3.4.0-SNAPSHOT")
+    }
 }
