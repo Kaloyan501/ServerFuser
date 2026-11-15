@@ -1,6 +1,8 @@
 package com.kaloyandonev.serverfuser.mixin;
 
 import com.kaloyandonev.serverfuser.MessageTypes;
+import com.kaloyandonev.serverfuser.Messages.Chat;
+import com.kaloyandonev.serverfuser.Messages.Helpers.Packets;
 import com.kaloyandonev.serverfuser.ServerFuser;
 //import com.kaloyandonev.serverfuser.MessageTypes;
 import net.minecraft.network.chat.ChatType;
@@ -49,20 +51,9 @@ public abstract class BroadcastChatMessage {
                 .map(k -> k.location().toString())
                 .orElse("minecraft:chat");
 
-        byte[] json = Component.Serializer.toJson(message.decoratedContent(), this.server.registryAccess())
-                .getBytes(StandardCharsets.UTF_8);
-
         try {
-            var buf = new ByteArrayOutputStream();
-            var d = new DataOutputStream(buf);
-            d.writeByte(MessageTypes.CHAT);
-            d.writeLong(uuid.getMostSignificantBits());
-            d.writeLong(uuid.getLeastSignificantBits());
-            d.writeUTF(name);
-            d.writeUTF(chatTypeKey);
-            d.writeInt(json.length);
-            d.write(json);
-            ServerFuser.interconnectClient.send(buf.toByteArray());
+            Chat packet = new Chat(uuid, name, chatTypeKey, Component.Serializer.toJson(message.decoratedContent(), this.server.registryAccess()));
+            ServerFuser.interconnectClient.send(Packets.encode(packet));
         } catch (IOException e) {
             e.printStackTrace();
         }

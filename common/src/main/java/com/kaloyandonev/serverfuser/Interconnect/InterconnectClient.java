@@ -2,13 +2,16 @@ package com.kaloyandonev.serverfuser.Interconnect;
 
 import com.kaloyandonev.serverfuser.Constants;
 import com.kaloyandonev.serverfuser.MessageTypes;
+import com.kaloyandonev.serverfuser.Messages.EntityData;
+import com.kaloyandonev.serverfuser.Messages.Handshake;
+import com.kaloyandonev.serverfuser.Messages.HandshakeResponce;
+import com.kaloyandonev.serverfuser.Messages.Helpers.Packets;
 import com.kaloyandonev.serverfuser.config.Config;
 import net.minecraft.SharedConstants;
 import net.minecraft.server.MinecraftServer;
 
 import java.io.*;
 import java.net.*;
-import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.UUID;
 import java.util.concurrent.*;
@@ -42,17 +45,6 @@ public final class InterconnectClient {
         }
     }
 
-    private byte[] buildHandshake(byte[] modHashSet) {
-        return ByteBuffer.allocate(1 + 16 + 4 + 4 + 32)
-                .put(MessageTypes.HANDSHAKE)
-                .putLong(shardId.getMostSignificantBits())
-                .putLong(shardId.getLeastSignificantBits())
-                .putInt(MessageTypes.PROTOCOL_VER)
-                .putInt(SharedConstants.getCurrentVersion().getDataVersion().getVersion())
-                .put(modHashSet)
-                .array();
-    }
-
     public void start(byte[] modHashSet, Supplier<MinecraftServer> server) {
         System.out.println("[ServerFuser #" + id + "] client started: " + System.identityHashCode(this));
         thread = new Thread(() -> runLoop(modHashSet, server), "ServerFuser-Interconnect");
@@ -79,12 +71,11 @@ public final class InterconnectClient {
                 socket.setKeepAlive(true);
                 backoff = 1000; // reset after a successful connect
 
-
-
                 var out = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
                 var in  = new DataInputStream(socket.getInputStream());
 
-                byte[] hs = buildHandshake(modHashSet);
+                byte[] hs = Packets.encode(new Handshake(shardId, MessageTypes.PROTOCOL_VER, SharedConstants.getCurrentVersion().getDataVersion().getVersion(), modHashSet));
+
                 out.writeInt(hs.length);
                 out.write(hs);
                 out.flush();
@@ -138,33 +129,21 @@ public final class InterconnectClient {
     private void onReadPacket(byte id, DataInputStream d, Supplier<MinecraftServer> server) throws IOException {
         switch (id) {
             case MessageTypes.HANDSHAKE_RESPONCE -> {
-                String status = d.readUTF();
-                if (status.equals(MessageTypes.HS_OK)) {
+                HandshakeResponce handshakeResponce = HandshakeResponce.read(d);
+                if (handshakeResponce.status().equals(MessageTypes.HS_OK)) {
                     accepted = true;
                     System.out.println("[ServerFuser] Handshake accepted");
                     Constants.LOG.error("[ServerFuser] Handshake accepted");
                 } else {
-                    System.out.println("[ServerFuser] Rejected by proxy: " + status);
-                    Constants.LOG.error("[ServerFuser] Rejected by proxy: " + status);
+                    System.out.println("[ServerFuser] Rejected by proxy: " + handshakeResponce.status());
+                    Constants.LOG.error("[ServerFuser] Rejected by proxy: " + handshakeResponce.status());
                     running = false;       // stop retrying; the config has to be fixed
                     onFatal.run();
                 }
             }
             case MessageTypes.ENTITYDATA -> {
-                UUID senderUUID = new UUID(d.readLong(), d.readLong());
-                UUID recieverUUID = new UUID(d.readLong(), d.readLong());
-                long txId = d.readLong();
-                UUID entityUUID = null;
-                byte[] sha = new byte[32];
-                int nbtLen = 0;
-                byte[] nbt = null;
-                entityUUID = new UUID(d.readLong(), d.readLong());
-                d.readFully(sha);
-                nbtLen = d.readInt();
-                if (nbtLen < 0 || nbtLen > d.available()) throw new IOException("bad nbt lenght " + nbtLen);
-                nbt = new byte[nbtLen];
-                d.readFully(nbt);
-                AfterTransferHandler.spawnEntity(nbt, status -> System.out.println("spawn status: " + status), server.get());
+                EntityData entityData = EntityData.read(d);
+                AfterTransferHandler.spawnEntity(entityData.nbt(), status -> System.out.println("spawn status: " + status), server.get());
             }
             default -> System.out.println("[ServerFuser] Unknown packet id " + id);
         }

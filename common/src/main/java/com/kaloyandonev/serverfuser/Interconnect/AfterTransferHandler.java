@@ -16,7 +16,7 @@ import java.util.function.Consumer;
 public class AfterTransferHandler {
     public static void spawnEntity(byte[] nbt, Consumer<Byte> ack, MinecraftServer s) {
         //MinecraftServer s = ServerLifecycleHooks.getCurrentServer();
-        if (s == null) { ack.accept(MessageTypes.STATUS_INVALID_PLAYER); return; }   // pick/add a fitting status
+        if (s == null) { ack.accept(MessageTypes.PLAYER_STATUS_INVALID_PLAYER); return; }   // pick/add a fitting status
 
         s.execute(() -> {
             byte status;
@@ -25,11 +25,11 @@ public class AfterTransferHandler {
                 ServerLevel level = s.overworld();                       // see the dimension note below
                 Entity e = EntityType.loadEntityRecursive(tag, level, x -> x);
                 status = (e != null && level.tryAddFreshEntityWithPassengers(e))
-                        ? MessageTypes.STATUS_OK
-                        : MessageTypes.STATUS_WRITE_FAILED;               // add a dedicated SPAWN_FAILED later
+                        ? MessageTypes.PLAYER_STATUS_OK
+                        : MessageTypes.PLAYER_STATUS_WRITE_FAILED;               // add a dedicated SPAWN_FAILED later
             } catch (Exception ex) {
                 ex.printStackTrace();
-                status = MessageTypes.STATUS_WRITE_FAILED;
+                status = MessageTypes.PLAYER_STATUS_WRITE_FAILED;
             }
             ack.accept(status);                // send TRANSFER_ACK from here, after the result is known
         });

@@ -1,6 +1,8 @@
 package com.kaloyandonev.serverFuserVelocity.Interconnect;
 
 import com.kaloyandonev.serverfuser.MessageTypes;
+import com.kaloyandonev.serverfuser.Messages.*;
+import com.kaloyandonev.serverfuser.Messages.Helpers.Packets;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 
 import java.io.*;
@@ -31,11 +33,7 @@ public class TCP {
     }
 
     static void sendHandshakeReply(ShardConnection c, String status) throws IOException {
-        var buf = new ByteArrayOutputStream();
-        var o = new DataOutputStream(buf);
-        o.writeByte(MessageTypes.HANDSHAKE_RESPONCE);
-        o.writeUTF(status);
-        c.send(buf.toByteArray());
+        c.send(Packets.encode(new HandshakeResponce(status)));
     }
 
     static void reject(Socket socket, UUID shardId, String status) {
@@ -78,80 +76,62 @@ public class TCP {
                 var d = new DataInputStream(new ByteArrayInputStream(body));
                 byte id = d.readByte();
                 if (id == MessageTypes.HANDSHAKE) {
-                    UUID shardId = new UUID(d.readLong(), d.readLong());
-                    int protocolVer = d.readInt();
-                    int dataVer = d.readInt();
-                    byte[] modHashSet = new byte[32];
-                    d.readFully(modHashSet);
+                    Handshake hs = Handshake.read(d);
 
                     boolean protoFlag;
                     boolean dataVerFlag;
                     boolean modHashSetFlag;
                     synchronized (InterconnectRuntimeConstants.class) {
                         if (!InterconnectRuntimeConstants.baselineSet) {
-                            InterconnectRuntimeConstants.dataVer = dataVer;
-                            InterconnectRuntimeConstants.modHashSet = modHashSet;
+                            InterconnectRuntimeConstants.dataVer = hs.dataVer();
+                            InterconnectRuntimeConstants.modHashSet = hs.modHashSet();
                             InterconnectRuntimeConstants.baselineSet = true;
                         }
 
-                        System.out.println("Baseline set by shard " + shardId + ": dataVer " + dataVer
-                                + ", modHashSet " + HexFormat.of().formatHex(modHashSet));
+                        System.out.println("Baseline set by shard " + hs.shardUUID() + ": dataVer " + hs.dataVer()
+                                + ", modHashSet " + HexFormat.of().formatHex(hs.modHashSet()));
 
-                        protoFlag = protocolVer == MessageTypes.PROTOCOL_VER;
-                        dataVerFlag = dataVer == InterconnectRuntimeConstants.dataVer;
-                        modHashSetFlag = MessageDigest.isEqual(modHashSet, InterconnectRuntimeConstants.modHashSet);
+                        protoFlag = hs.protocolVer() == MessageTypes.PROTOCOL_VER;
+                        dataVerFlag = hs.dataVer() == InterconnectRuntimeConstants.dataVer;
+                        modHashSetFlag = MessageDigest.isEqual(hs.modHashSet(), InterconnectRuntimeConstants.modHashSet);
                     }
 
-                    /*if (!(protoFlag && dataVerFlag && modHashSetFlag)) {
-                        System.out.println("Rejected shard " + shardId + ": handshake mismatch"
-                                + " (protocolVer " + protocolVer + ", dataVer " + dataVer
-                                + ", modHashSet " + HexFormat.of().formatHex(modHashSet) + ")");
-                        return;                       // try-with-resources closes the socket
-                    }*/
-
                     if (!protoFlag){
-                        System.out.println(String.format("Rejected shard %s because of a protocol version mismatch. Expected value: %d, Actual value: %d", shardId, MessageTypes.PROTOCOL_VER, protocolVer));
-                        reject(socket, shardId, MessageTypes.HS_PROTOCOLVER_MISMATCH);
+                        System.out.println(String.format("Rejected shard %s because of a protocol version mismatch. Expected value: %d, Actual value: %d", hs.shardUUID(), MessageTypes.PROTOCOL_VER, hs.protocolVer()));
+                        reject(socket, hs.shardUUID(), MessageTypes.HS_PROTOCOLVER_MISMATCH);
                         socket.shutdownOutput();
                         return;
                     }
                     if (!dataVerFlag){
-                        System.out.println(String.format("Rejected shard %s because of a data version mismatch. You are most likely trying to connect shard with different Minecraft versions. This is not supported. Expected value: %d, Actual value: %d", shardId, InterconnectRuntimeConstants.dataVer, dataVer));
-                        reject(socket, shardId, MessageTypes.HS_DATAVER_MISMATCH);
+                        System.out.println(String.format("Rejected shard %s because of a data version mismatch. You are most likely trying to connect shard with different Minecraft versions. This is not supported. Expected value: %d, Actual value: %d", hs.shardUUID(), InterconnectRuntimeConstants.dataVer, hs.dataVer()));
+                        reject(socket, hs.shardUUID(), MessageTypes.HS_DATAVER_MISMATCH);
                         socket.shutdownOutput();
                         return;
                     }
                     if (!modHashSetFlag){
-                        System.out.println(String.format("Rejected shard %s because of a mod hash set mismatch. Please make sure that the mods installed on every shard match exactly.", shardId));
-                        reject(socket, shardId, MessageTypes.HS_MODHASHSET_MISMATCH);
+                        System.out.println(String.format("Rejected shard %s because of a mod hash set mismatch. Please make sure that the mods installed on every shard match exactly.", hs.shardUUID()));
+                        reject(socket, hs.shardUUID(), MessageTypes.HS_MODHASHSET_MISMATCH);
                         socket.shutdownOutput();
                         return;
                     }
 
-                    conn = new ShardConnection(shardId, socket);
-                    ShardConnection old = CONNECTIONS.put(shardId, conn);
+                    conn = new ShardConnection(hs.shardUUID(), socket);
+                    ShardConnection old = CONNECTIONS.put(hs.shardUUID(), conn);
                     if (old != null) old.close();
                     sendHandshakeReply(conn, MessageTypes.HS_OK);
-                    System.out.println("Handshake from shard " + shardId + " with protocolVer " + protocolVer
-                            + " and dataVer " + dataVer + " and modHashSet " + HexFormat.of().formatHex(modHashSet));
+                    System.out.println("Handshake from shard " + hs.shardUUID() + " with protocolVer " + hs.protocolVer()
+                            + " and dataVer " + hs.dataVer() + " and modHashSet " + HexFormat.of().formatHex(hs.modHashSet()));
 
 
                 }
                 if (id == MessageTypes.CHAT) {
-
                     if (id != MessageTypes.HANDSHAKE && conn == null) {
                         System.out.println("Packet " + id + " before handshake from " + remote + ", dropping");
                         return;
                     }
 
-                    UUID senderId = new UUID(d.readLong(), d.readLong());
-                    String senderName = d.readUTF();
-                    String chatTypeKey = d.readUTF();
-                    int jsonLen = d.readInt();
-                    byte[] json = new byte[jsonLen];
-                    d.readFully(json);
-                    String jsonString = new String(json, StandardCharsets.UTF_8);
-                    System.out.println(String.format("Got chat message from shard: %s %s %s %s", senderId, senderName, chatTypeKey, jsonString));
+                    Chat chat = Chat.read(d);
+                    System.out.println(String.format("Got chat message from shard: %s %s %s %s", chat.senderUUID(), chat.senderName(), chat.chatTypeKey(), chat.chatComponentJSON()));
                 }
                 if (id == MessageTypes.PLAYERDATA) {
 
@@ -160,21 +140,12 @@ public class TCP {
                         return;
                     }
 
-                    UUID playerUUID = null;
-                    byte[] sha = new byte[32];
-                    int nbtLen = 0;
-                    byte[] nbt = null;
-                    playerUUID = new UUID(d.readLong(), d.readLong());
-                    d.readFully(sha);
-                    nbtLen = d.readInt();
-                    if (nbtLen < 0 || nbtLen > d.available()) throw new IOException("bad nbt length " + nbtLen);
-                    nbt = new byte[nbtLen];
-                    d.readFully(nbt);
+                    PlayerData playerData = PlayerData.read(d);
 
                     try {
-                        byte[] calcSha = MessageDigest.getInstance("SHA-256").digest(nbt);
+                        byte[] calcSha = MessageDigest.getInstance("SHA-256").digest(playerData.nbt());
 
-                        if (!MessageDigest.isEqual(calcSha, sha)) {
+                        if (!MessageDigest.isEqual(calcSha, playerData.sha())) {
                             throw new IOException("SHA Checksum invalid. Throwing data out.");
                         }
 
@@ -184,40 +155,28 @@ public class TCP {
                     }
 
 
-                    System.out.println(String.format("Got player data for playerUUID: %s with length %d and sha %s", playerUUID.toString(), nbtLen, HexFormat.of().formatHex(sha)));
-                    System.out.println(HexFormat.of().formatHex(nbt));
+                    System.out.println(String.format("Got player data for playerUUID: %s with length %d and sha %s", playerData.playerUUID().toString(), playerData.nbtLen(), HexFormat.of().formatHex(playerData.sha())));
+                    System.out.println(HexFormat.of().formatHex(playerData.nbt()));
                 }
                 if (id == MessageTypes.ENTITYDATA) {
-
-                    d.readLong(); d.readLong(); // Throw out senderUuid field from the shard, it will be replaced later on.
 
                     if (id != MessageTypes.HANDSHAKE && conn == null) {
                         System.out.println("Packet " + id + " before handshake from " + remote + ", dropping");
                         return;
                     }
 
-                    UUID recieverUUID = new UUID(d.readLong(), d.readLong());
-                    long txId = d.readLong();
+                    EntityData entityData = EntityData.read(d);
 
-                    ShardConnection target = InterconnectRuntimeConstants.CONNECTIONS.get(recieverUUID);
+                    ShardConnection target = CONNECTIONS.get(entityData.recieverUUID());
 
-                    UUID entityUUID = null;
-                    byte[] sha = new byte[32];
-                    int nbtLen = 0;
-                    byte[] nbt = null;
-                    entityUUID = new UUID(d.readLong(), d.readLong());
-                    d.readFully(sha);
-                    nbtLen = d.readInt();
-                    if (nbtLen < 0 || nbtLen > d.available()) throw new IOException("bad nbt lenght " + nbtLen);
-                    nbt = new byte[nbtLen];
-                    d.readFully(nbt);
+                    if (entityData.nbtLen() < 0 || entityData.nbtLen() > d.available()) throw new IOException("bad nbt lenght " + entityData.nbtLen());
 
-                    System.out.println("send: nbtLen=" + nbt.length + " sha=" + HexFormat.of().formatHex(sha));
+                    System.out.println("send: nbtLen=" + entityData.nbt().length + " sha=" + HexFormat.of().formatHex(entityData.sha()));
 
                     try {
-                        byte[] calcSha = MessageDigest.getInstance("SHA-256").digest(nbt);
+                        byte[] calcSha = MessageDigest.getInstance("SHA-256").digest(entityData.nbt());
 
-                        if (!MessageDigest.isEqual(calcSha, sha)) {
+                        if (!MessageDigest.isEqual(calcSha, entityData.sha())) {
                             throw new IOException("SHA Checksum invalid. Throwing data out.");
                         }
 
@@ -232,13 +191,10 @@ public class TCP {
 
                     //TODO: remember who to route the ack to.
 
-                    /*ByteBuffer frame = ByteBuffer.allocate(4 + body.length);
-                    frame.putInt(body.length).put(body);
-                    target.send(frame.array());*/
                     target.send(body);
 
-                    System.out.println(String.format("Got mob data for entityUUID: %s with length %d and sha %s", entityUUID.toString(), nbtLen, HexFormat.of().formatHex(sha)));
-                    System.out.println(HexFormat.of().formatHex(nbt));
+                    System.out.println(String.format("Got mob data for entityUUID: %s with length %d and sha %s", entityData.entityUUID().toString(), entityData.nbtLen(), HexFormat.of().formatHex(entityData.sha())));
+                    System.out.println(HexFormat.of().formatHex(entityData.nbt()));
                 }
             }
         } catch (EOFException e) {
