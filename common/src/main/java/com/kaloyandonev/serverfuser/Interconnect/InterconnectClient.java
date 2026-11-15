@@ -2,15 +2,20 @@ package com.kaloyandonev.serverfuser.Interconnect;
 
 import com.kaloyandonev.serverfuser.Constants;
 import com.kaloyandonev.serverfuser.MessageTypes;
+import com.kaloyandonev.serverfuser.Messages.EntityData;
+import com.kaloyandonev.serverfuser.Messages.Handshake;
+import com.kaloyandonev.serverfuser.Messages.HandshakeResponce;
+import com.kaloyandonev.serverfuser.Messages.Helpers.Packets;
 import com.kaloyandonev.serverfuser.config.Config;
 import net.minecraft.SharedConstants;
+import net.minecraft.server.MinecraftServer;
 
 import java.io.*;
 import java.net.*;
-import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.UUID;
 import java.util.concurrent.*;
+import java.util.function.Supplier;
 
 public final class InterconnectClient {
     private final String host;
@@ -40,20 +45,9 @@ public final class InterconnectClient {
         }
     }
 
-    private byte[] buildHandshake(byte[] modHashSet) {
-        return ByteBuffer.allocate(1 + 16 + 4 + 4 + 32)
-                .put(MessageTypes.HANDSHAKE)
-                .putLong(shardId.getMostSignificantBits())
-                .putLong(shardId.getLeastSignificantBits())
-                .putInt(MessageTypes.PROTOCOL_VER)
-                .putInt(SharedConstants.getCurrentVersion().getDataVersion().getVersion())
-                .put(modHashSet)
-                .array();
-    }
-
-    public void start(byte[] modHashSet) {
+    public void start(byte[] modHashSet, Supplier<MinecraftServer> server) {
         System.out.println("[ServerFuser #" + id + "] client started: " + System.identityHashCode(this));
-        thread = new Thread(() -> runLoop(modHashSet), "ServerFuser-Interconnect");
+        thread = new Thread(() -> runLoop(modHashSet, server), "ServerFuser-Interconnect");
         thread.setDaemon(true);
         thread.start();
     }
@@ -68,7 +62,7 @@ public final class InterconnectClient {
         return outbox.offer(message);
     }
 
-    private void runLoop(byte[] modHashSet) {
+    private void runLoop(byte[] modHashSet, Supplier<MinecraftServer> server) {
         long backoff = 1000;
         while (running) {
             try (Socket socket = new Socket()) {
@@ -77,18 +71,17 @@ public final class InterconnectClient {
                 socket.setKeepAlive(true);
                 backoff = 1000; // reset after a successful connect
 
-
-
                 var out = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
                 var in  = new DataInputStream(socket.getInputStream());
 
-                byte[] hs = buildHandshake(modHashSet);
+                byte[] hs = Packets.encode(new Handshake(shardId, MessageTypes.PROTOCOL_VER, SharedConstants.getCurrentVersion().getDataVersion().getVersion(), modHashSet));
+
                 out.writeInt(hs.length);
                 out.write(hs);
                 out.flush();
 
                 // Reader runs on its own thread so writes don't block on reads
-                Thread reader = new Thread(() -> readLoop(in), "ServerFuser-Interconnect-Reader");
+                Thread reader = new Thread(() -> readLoop(in, server), "ServerFuser-Interconnect-Reader");
                 reader.setDaemon(true);
                 reader.start();
 
@@ -116,7 +109,7 @@ public final class InterconnectClient {
         }
     }
 
-    private void readLoop(DataInputStream in) {
+    private void readLoop(DataInputStream in, Supplier<MinecraftServer> server) {
         try {
             while (running) {
                 int len = in.readInt();
@@ -126,27 +119,31 @@ public final class InterconnectClient {
 
                 var d = new DataInputStream(new ByteArrayInputStream(body));
                 byte id = d.readByte();
-                onReadPacket(id, d);
+                onReadPacket(id, d, server);
             }
         } catch (Throwable t) {
             System.out.println("[ServerFuser] reader ended: " + t);
         }
     }
 
-    private void onReadPacket(byte id, DataInputStream d) throws IOException {
+    private void onReadPacket(byte id, DataInputStream d, Supplier<MinecraftServer> server) throws IOException {
         switch (id) {
             case MessageTypes.HANDSHAKE_RESPONCE -> {
-                String status = d.readUTF();
-                if (status.equals(MessageTypes.HS_OK)) {
+                HandshakeResponce handshakeResponce = HandshakeResponce.read(d);
+                if (handshakeResponce.status().equals(MessageTypes.HS_OK)) {
                     accepted = true;
                     System.out.println("[ServerFuser] Handshake accepted");
                     Constants.LOG.error("[ServerFuser] Handshake accepted");
                 } else {
-                    System.out.println("[ServerFuser] Rejected by proxy: " + status);
-                    Constants.LOG.error("[ServerFuser] Rejected by proxy: " + status);
+                    System.out.println("[ServerFuser] Rejected by proxy: " + handshakeResponce.status());
+                    Constants.LOG.error("[ServerFuser] Rejected by proxy: " + handshakeResponce.status());
                     running = false;       // stop retrying; the config has to be fixed
                     onFatal.run();
                 }
+            }
+            case MessageTypes.ENTITYDATA -> {
+                EntityData entityData = EntityData.read(d);
+                AfterTransferHandler.spawnEntity(entityData.nbt(), status -> System.out.println("spawn status: " + status), server.get());
             }
             default -> System.out.println("[ServerFuser] Unknown packet id " + id);
         }

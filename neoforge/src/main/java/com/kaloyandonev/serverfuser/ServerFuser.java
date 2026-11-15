@@ -46,7 +46,7 @@ public class ServerFuser {
 
         try {
             byte[] modSetHash = ModSetHash.compute(FMLPaths.MODSDIR.get());
-            interconnectClient.start(modSetHash);
+            interconnectClient.start(modSetHash, ServerLifecycleHooks::getCurrentServer);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -58,19 +58,23 @@ public class ServerFuser {
                 Commands.literal("serverfuser")
                         .requires(src -> src.hasPermission(4))
                         .then(Commands.literal("sendPlayerFile")
-                                .then(Commands.argument("uuid", UuidArgument.uuid())
+                                .then(Commands.argument("recieverUuid", UuidArgument.uuid())
+                                    .then(Commands.argument("playerUuid", UuidArgument.uuid())
                                         .executes(ctx -> {
-                                            UUID uuid = UuidArgument.getUuid(ctx, "uuid");
-                                            ShardTransfer.sendSaveFile(uuid);
+                                            UUID playerUuid = UuidArgument.getUuid(ctx, "uuid");
+                                            UUID recieverUuid = UuidArgument.getUuid(ctx, "recieverUuid");
+                                            ShardTransfer.sendSaveFile(playerUuid, recieverUuid);
                                             return Command.SINGLE_SUCCESS;
-                                        })))
+                                        }))))
                         .then(Commands.literal("sendMob")
-                                .then(Commands.argument("entity", EntityArgument.entity())
+                                .then(Commands.argument("recieverUuid", UuidArgument.uuid())
+                                    .then(Commands.argument("entity", EntityArgument.entity())
                                         .executes(ctx -> {
-                                            UUID uuid = EntityArgument.getEntity(ctx, "entity").getUUID();
-                                            ShardTransfer.sendEntity(uuid);
+                                            UUID entityUuid = EntityArgument.getEntity(ctx, "entity").getUUID();
+                                            UUID recieverUuid = UuidArgument.getUuid(ctx, "recieverUuid");
+                                            ShardTransfer.sendEntity(entityUuid, recieverUuid);
                                             return Command.SINGLE_SUCCESS;
-                                        })))
+                                        }))))
         );
     }
 

@@ -2,6 +2,9 @@ package com.kaloyandonev.serverfuser.helpers.transfer;
 
 import com.kaloyandonev.serverfuser.Interconnect.InterconnectClient;
 import com.kaloyandonev.serverfuser.MessageTypes;
+import com.kaloyandonev.serverfuser.Messages.EntityData;
+import com.kaloyandonev.serverfuser.Messages.Helpers.Packets;
+import com.kaloyandonev.serverfuser.Messages.PlayerData;
 import net.minecraft.SharedConstants;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
@@ -19,51 +22,49 @@ import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static com.kaloyandonev.serverfuser.ServerFuser.interconnectClient;
 import com.kaloyandonev.serverfuser.config.Config;
 
 public class ShardTransfer {
 
-    public static void sendSaveFile(UUID uuid){
+    public static void sendSaveFile(UUID playerUuid, UUID recieverUuid){
         MinecraftServer s = ServerLifecycleHooks.getCurrentServer();
+        // Sender UUID is blank here as the ServerFuser interconnect will replace the UUID with the correct one and vouch for it on forward.
+        // Avoids weird network shenanigans.
+        UUID senderUuid = new UUID(0, 0);
 
         if(s == null) return;
 
         s.execute(() -> {
-           ServerPlayer p = s.getPlayerList().getPlayer(uuid);
+           ServerPlayer p = s.getPlayerList().getPlayer(playerUuid);
            if (p == null) return;
             try {
-                // 1. player NBT -> bytes
                 CompoundTag tag = p.saveWithoutId(new CompoundTag());
                 NbtUtils.addCurrentDataVersion(tag);
                 var nbtOut = new ByteArrayOutputStream();
                 NbtIo.writeCompressed(tag, nbtOut);
                 byte[] nbt = nbtOut.toByteArray();
 
-                // 2. checksum
                 byte[] sha = MessageDigest.getInstance("SHA-256").digest(nbt);   // 32 bytes
 
-                // 3. packet body: [ID][uuid][sha256][int nbtLen][nbt]
-                var buf = new ByteArrayOutputStream(1 + 16 + 32 + 4 + nbt.length);
-                var d = new DataOutputStream(buf);
-                d.writeByte(MessageTypes.PLAYERDATA);
-                d.writeLong(uuid.getMostSignificantBits());
-                d.writeLong(uuid.getLeastSignificantBits());
-                d.write(sha);
-                d.writeInt(nbt.length);
-                d.write(nbt);
+                long txId = ThreadLocalRandom.current().nextLong();
 
-                InterconnectClient.send(buf.toByteArray());
+                InterconnectClient.send(Packets.encode(new PlayerData(senderUuid, recieverUuid, txId, playerUuid, sha, nbt.length, nbt)));
             } catch (IOException | NoSuchAlgorithmException e) {
                 e.printStackTrace();
             }
         });
     }
 
-    public static void sendEntity(UUID uuid){
+    public static void sendEntity(UUID entityUuid, UUID recieverUuid){
         MinecraftServer s = ServerLifecycleHooks.getCurrentServer();
+        // Sender UUID is blank here as the ServerFuser interconnect will replace the UUID with the correct one and vouch for it on forward.
+        // Avoids weird network shenanigans.
+        UUID senderUuid = new UUID(0, 0);
         if (s == null) return;
 
         try {
@@ -71,7 +72,7 @@ public class ShardTransfer {
 
             Entity entity = null;
             for (ServerLevel level: s.getAllLevels()) {
-                entity = level.getEntity(uuid);
+                entity = level.getEntity(entityUuid);
                 if (entity != null) break;
             }
             if (entity == null) return;
@@ -85,17 +86,11 @@ public class ShardTransfer {
             byte[] nbt = nbtOut.toByteArray();
 
             byte[] sha = MessageDigest.getInstance("SHA-256").digest(nbt);
+            System.out.println("send: nbtLen=" + nbt.length + " sha=" + HexFormat.of().formatHex(sha));
 
-            var buf = new ByteArrayOutputStream(1 + 16 + 32 + 4 + nbt.length);
-            var d = new DataOutputStream(buf);
-            d.writeByte(MessageTypes.ENTITYDATA);
-            d.writeLong(uuid.getMostSignificantBits());
-            d.writeLong(uuid.getLeastSignificantBits());
-            d.write(sha);
-            d.writeInt(nbt.length);
-            d.write(nbt);
+            long txId = ThreadLocalRandom.current().nextLong();
 
-            InterconnectClient.send(buf.toByteArray());
+            InterconnectClient.send(Packets.encode(new EntityData(senderUuid, recieverUuid, txId, entityUuid, sha, nbt.length, nbt)));
         } catch(Exception e) {
             e.printStackTrace();
         }
