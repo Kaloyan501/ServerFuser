@@ -5,6 +5,7 @@ import com.velocitypowered.api.proxy.server.RegisteredServer;
 
 import java.io.*;
 import java.net.*;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HexFormat;
@@ -188,10 +189,17 @@ public class TCP {
                 }
                 if (id == MessageTypes.ENTITYDATA) {
 
+                    d.readLong(); d.readLong(); // Throw out senderUuid field from the shard, it will be replaced later on.
+
                     if (id != MessageTypes.HANDSHAKE && conn == null) {
                         System.out.println("Packet " + id + " before handshake from " + remote + ", dropping");
                         return;
                     }
+
+                    UUID recieverUUID = new UUID(d.readLong(), d.readLong());
+                    long txId = d.readLong();
+
+                    ShardConnection target = InterconnectRuntimeConstants.CONNECTIONS.get(recieverUUID);
 
                     UUID entityUUID = null;
                     byte[] sha = new byte[32];
@@ -204,6 +212,8 @@ public class TCP {
                     nbt = new byte[nbtLen];
                     d.readFully(nbt);
 
+                    System.out.println("send: nbtLen=" + nbt.length + " sha=" + HexFormat.of().formatHex(sha));
+
                     try {
                         byte[] calcSha = MessageDigest.getInstance("SHA-256").digest(nbt);
 
@@ -215,6 +225,17 @@ public class TCP {
                         e.printStackTrace();
                         return;
                     }
+
+                    ByteBuffer.wrap(body)
+                            .putLong(1, conn.shardId().getMostSignificantBits())
+                            .putLong(9, conn.shardId().getLeastSignificantBits());
+
+                    //TODO: remember who to route the ack to.
+
+                    /*ByteBuffer frame = ByteBuffer.allocate(4 + body.length);
+                    frame.putInt(body.length).put(body);
+                    target.send(frame.array());*/
+                    target.send(body);
 
                     System.out.println(String.format("Got mob data for entityUUID: %s with length %d and sha %s", entityUUID.toString(), nbtLen, HexFormat.of().formatHex(sha)));
                     System.out.println(HexFormat.of().formatHex(nbt));

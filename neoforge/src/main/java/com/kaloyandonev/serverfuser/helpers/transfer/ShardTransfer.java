@@ -19,20 +19,25 @@ import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static com.kaloyandonev.serverfuser.ServerFuser.interconnectClient;
 import com.kaloyandonev.serverfuser.config.Config;
 
 public class ShardTransfer {
 
-    public static void sendSaveFile(UUID uuid){
+    public static void sendSaveFile(UUID playerUuid, UUID recieverUuid){
         MinecraftServer s = ServerLifecycleHooks.getCurrentServer();
+        // Sender UUID is blank here as the ServerFuser interconnect will replace the UUID with the correct one and vouch for it on forward.
+        // Avoids weird network shenanigans.
+        UUID senderUuid = new UUID(0, 0);
 
         if(s == null) return;
 
         s.execute(() -> {
-           ServerPlayer p = s.getPlayerList().getPlayer(uuid);
+           ServerPlayer p = s.getPlayerList().getPlayer(playerUuid);
            if (p == null) return;
             try {
                 // 1. player NBT -> bytes
@@ -49,8 +54,12 @@ public class ShardTransfer {
                 var buf = new ByteArrayOutputStream(1 + 16 + 32 + 4 + nbt.length);
                 var d = new DataOutputStream(buf);
                 d.writeByte(MessageTypes.PLAYERDATA);
-                d.writeLong(uuid.getMostSignificantBits());
-                d.writeLong(uuid.getLeastSignificantBits());
+                d.writeLong(senderUuid.getMostSignificantBits());
+                d.writeLong(senderUuid.getLeastSignificantBits());
+                d.writeLong(recieverUuid.getMostSignificantBits());
+                d.writeLong(recieverUuid.getLeastSignificantBits());
+                d.writeLong(playerUuid.getMostSignificantBits());
+                d.writeLong(playerUuid.getLeastSignificantBits());
                 d.write(sha);
                 d.writeInt(nbt.length);
                 d.write(nbt);
@@ -62,8 +71,11 @@ public class ShardTransfer {
         });
     }
 
-    public static void sendEntity(UUID uuid){
+    public static void sendEntity(UUID entityUuid, UUID recieverUuid){
         MinecraftServer s = ServerLifecycleHooks.getCurrentServer();
+        // Sender UUID is blank here as the ServerFuser interconnect will replace the UUID with the correct one and vouch for it on forward.
+        // Avoids weird network shenanigans.
+        UUID senderUuid = new UUID(0, 0);
         if (s == null) return;
 
         try {
@@ -71,7 +83,7 @@ public class ShardTransfer {
 
             Entity entity = null;
             for (ServerLevel level: s.getAllLevels()) {
-                entity = level.getEntity(uuid);
+                entity = level.getEntity(entityUuid);
                 if (entity != null) break;
             }
             if (entity == null) return;
@@ -85,12 +97,20 @@ public class ShardTransfer {
             byte[] nbt = nbtOut.toByteArray();
 
             byte[] sha = MessageDigest.getInstance("SHA-256").digest(nbt);
+            System.out.println("send: nbtLen=" + nbt.length + " sha=" + HexFormat.of().formatHex(sha));
 
             var buf = new ByteArrayOutputStream(1 + 16 + 32 + 4 + nbt.length);
             var d = new DataOutputStream(buf);
+            long txId = ThreadLocalRandom.current().nextLong();
+
             d.writeByte(MessageTypes.ENTITYDATA);
-            d.writeLong(uuid.getMostSignificantBits());
-            d.writeLong(uuid.getLeastSignificantBits());
+            d.writeLong(senderUuid.getMostSignificantBits());
+            d.writeLong(senderUuid.getLeastSignificantBits());
+            d.writeLong(recieverUuid.getMostSignificantBits());
+            d.writeLong(recieverUuid.getLeastSignificantBits());
+            d.writeLong(txId);
+            d.writeLong(entityUuid.getMostSignificantBits());
+            d.writeLong(entityUuid.getLeastSignificantBits());
             d.write(sha);
             d.writeInt(nbt.length);
             d.write(nbt);

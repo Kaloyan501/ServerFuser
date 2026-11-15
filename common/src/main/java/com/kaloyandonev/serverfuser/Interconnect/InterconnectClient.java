@@ -4,6 +4,7 @@ import com.kaloyandonev.serverfuser.Constants;
 import com.kaloyandonev.serverfuser.MessageTypes;
 import com.kaloyandonev.serverfuser.config.Config;
 import net.minecraft.SharedConstants;
+import net.minecraft.server.MinecraftServer;
 
 import java.io.*;
 import java.net.*;
@@ -11,6 +12,7 @@ import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.UUID;
 import java.util.concurrent.*;
+import java.util.function.Supplier;
 
 public final class InterconnectClient {
     private final String host;
@@ -51,9 +53,9 @@ public final class InterconnectClient {
                 .array();
     }
 
-    public void start(byte[] modHashSet) {
+    public void start(byte[] modHashSet, Supplier<MinecraftServer> server) {
         System.out.println("[ServerFuser #" + id + "] client started: " + System.identityHashCode(this));
-        thread = new Thread(() -> runLoop(modHashSet), "ServerFuser-Interconnect");
+        thread = new Thread(() -> runLoop(modHashSet, server), "ServerFuser-Interconnect");
         thread.setDaemon(true);
         thread.start();
     }
@@ -68,7 +70,7 @@ public final class InterconnectClient {
         return outbox.offer(message);
     }
 
-    private void runLoop(byte[] modHashSet) {
+    private void runLoop(byte[] modHashSet, Supplier<MinecraftServer> server) {
         long backoff = 1000;
         while (running) {
             try (Socket socket = new Socket()) {
@@ -88,7 +90,7 @@ public final class InterconnectClient {
                 out.flush();
 
                 // Reader runs on its own thread so writes don't block on reads
-                Thread reader = new Thread(() -> readLoop(in), "ServerFuser-Interconnect-Reader");
+                Thread reader = new Thread(() -> readLoop(in, server), "ServerFuser-Interconnect-Reader");
                 reader.setDaemon(true);
                 reader.start();
 
@@ -116,7 +118,7 @@ public final class InterconnectClient {
         }
     }
 
-    private void readLoop(DataInputStream in) {
+    private void readLoop(DataInputStream in, Supplier<MinecraftServer> server) {
         try {
             while (running) {
                 int len = in.readInt();
@@ -126,14 +128,14 @@ public final class InterconnectClient {
 
                 var d = new DataInputStream(new ByteArrayInputStream(body));
                 byte id = d.readByte();
-                onReadPacket(id, d);
+                onReadPacket(id, d, server);
             }
         } catch (Throwable t) {
             System.out.println("[ServerFuser] reader ended: " + t);
         }
     }
 
-    private void onReadPacket(byte id, DataInputStream d) throws IOException {
+    private void onReadPacket(byte id, DataInputStream d, Supplier<MinecraftServer> server) throws IOException {
         switch (id) {
             case MessageTypes.HANDSHAKE_RESPONCE -> {
                 String status = d.readUTF();
@@ -147,6 +149,22 @@ public final class InterconnectClient {
                     running = false;       // stop retrying; the config has to be fixed
                     onFatal.run();
                 }
+            }
+            case MessageTypes.ENTITYDATA -> {
+                UUID senderUUID = new UUID(d.readLong(), d.readLong());
+                UUID recieverUUID = new UUID(d.readLong(), d.readLong());
+                long txId = d.readLong();
+                UUID entityUUID = null;
+                byte[] sha = new byte[32];
+                int nbtLen = 0;
+                byte[] nbt = null;
+                entityUUID = new UUID(d.readLong(), d.readLong());
+                d.readFully(sha);
+                nbtLen = d.readInt();
+                if (nbtLen < 0 || nbtLen > d.available()) throw new IOException("bad nbt lenght " + nbtLen);
+                nbt = new byte[nbtLen];
+                d.readFully(nbt);
+                AfterTransferHandler.spawnEntity(nbt, status -> System.out.println("spawn status: " + status), server.get());
             }
             default -> System.out.println("[ServerFuser] Unknown packet id " + id);
         }
