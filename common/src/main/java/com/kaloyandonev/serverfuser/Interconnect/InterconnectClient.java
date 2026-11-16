@@ -2,10 +2,9 @@ package com.kaloyandonev.serverfuser.Interconnect;
 
 import com.kaloyandonev.serverfuser.Constants;
 import com.kaloyandonev.serverfuser.MessageTypes;
-import com.kaloyandonev.serverfuser.Messages.EntityData;
-import com.kaloyandonev.serverfuser.Messages.Handshake;
-import com.kaloyandonev.serverfuser.Messages.HandshakeResponce;
+import com.kaloyandonev.serverfuser.Messages.*;
 import com.kaloyandonev.serverfuser.Messages.Helpers.Packets;
+import com.kaloyandonev.serverfuser.Transfers;
 import com.kaloyandonev.serverfuser.config.Config;
 import net.minecraft.SharedConstants;
 import net.minecraft.server.MinecraftServer;
@@ -109,6 +108,14 @@ public final class InterconnectClient {
         }
     }
 
+    private static void sendAck(UUID sender, long txId, byte status) {
+        try {
+            send(Packets.encode(new TransferAck(sender, txId, status)));
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+    }
+
     private void readLoop(DataInputStream in, Supplier<MinecraftServer> server) {
         try {
             while (running) {
@@ -118,37 +125,35 @@ public final class InterconnectClient {
                 in.readFully(body);
 
                 var d = new DataInputStream(new ByteArrayInputStream(body));
-                byte id = d.readByte();
-                onReadPacket(id, d, server);
+                Packet p = Packets.read(d);
+                onReadPacket(p, server);
             }
         } catch (Throwable t) {
             System.out.println("[ServerFuser] reader ended: " + t);
         }
     }
 
-    private void onReadPacket(byte id, DataInputStream d, Supplier<MinecraftServer> server) throws IOException {
-        switch (id) {
-            case MessageTypes.HANDSHAKE_RESPONCE -> {
-                HandshakeResponce handshakeResponce = HandshakeResponce.read(d);
-                if (handshakeResponce.status().equals(MessageTypes.HS_OK)) {
+    private void onReadPacket(Packet p, Supplier<MinecraftServer> server) throws IOException {
+        switch (p) {
+            case HandshakeResponce r -> {
+                if (r.status().equals(MessageTypes.HS_OK)) {
                     accepted = true;
                     System.out.println("[ServerFuser] Handshake accepted");
                     Constants.LOG.error("[ServerFuser] Handshake accepted");
                 } else {
-                    System.out.println("[ServerFuser] Rejected by proxy: " + handshakeResponce.status());
-                    Constants.LOG.error("[ServerFuser] Rejected by proxy: " + handshakeResponce.status());
+                    System.out.println("[ServerFuser] Rejected by proxy: " + r.status());
+                    Constants.LOG.error("[ServerFuser] Rejected by proxy: " + r.status());
                     running = false;       // stop retrying; the config has to be fixed
                     onFatal.run();
                 }
             }
-            case MessageTypes.ENTITYDATA -> {
-                EntityData entityData = EntityData.read(d);
-                AfterTransferHandler.spawnEntity(entityData.nbt(), status -> System.out.println("spawn status: " + status), server.get());
+            case EntityData e -> {
+                AfterTransferHandler.spawnEntity(e.nbt(), status -> sendAck(e.senderUUID(), e.txID(), status), server.get());
             }
-            default -> System.out.println("[ServerFuser] Unknown packet id " + id);
+            case TransferAck a -> Transfers.complete(a.txId(), a.status());
+            default -> System.out.println("[ServerFuser] unexpected packet " + p);
         }
     }
-
     private void onMessage(String msg) {
         // Do something.
     }

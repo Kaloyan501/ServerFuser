@@ -5,6 +5,7 @@ import com.kaloyandonev.serverfuser.MessageTypes;
 import com.kaloyandonev.serverfuser.Messages.EntityData;
 import com.kaloyandonev.serverfuser.Messages.Helpers.Packets;
 import com.kaloyandonev.serverfuser.Messages.PlayerData;
+import com.kaloyandonev.serverfuser.Transfers;
 import net.minecraft.SharedConstants;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
@@ -26,10 +27,19 @@ import java.util.HexFormat;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
+import static com.kaloyandonev.serverfuser.MessageTypes.statusName;
 import static com.kaloyandonev.serverfuser.ServerFuser.interconnectClient;
 import com.kaloyandonev.serverfuser.config.Config;
 
 public class ShardTransfer {
+
+    private static Entity findEntity(MinecraftServer s, UUID uuid) {
+        for (ServerLevel level : s.getAllLevels()) {
+            Entity e = level.getEntity(uuid);
+            if (e != null) return e;
+        }
+        return null;
+    }
 
     public static void sendSaveFile(UUID playerUuid, UUID recieverUuid){
         MinecraftServer s = ServerLifecycleHooks.getCurrentServer();
@@ -89,6 +99,18 @@ public class ShardTransfer {
             System.out.println("send: nbtLen=" + nbt.length + " sha=" + HexFormat.of().formatHex(sha));
 
             long txId = ThreadLocalRandom.current().nextLong();
+            var result = Transfers.register(txId);
+
+            result.thenAccept(status -> {
+                if (status == MessageTypes.STATUS_OK) {
+                    s.execute(() -> {                       // world access: server thread
+                        Entity e = findEntity(s, entityUuid);  // same loop over s.getAllLevels() as before
+                        if (e != null) e.discard();
+                    });
+                } else {
+                    System.out.println("transfer " + txId + " failed: " + statusName(status));
+                }
+            }).exceptionally(t -> { System.out.println("transfer " + txId + " gave up: " + t); return null; });
 
             InterconnectClient.send(Packets.encode(new EntityData(senderUuid, recieverUuid, txId, entityUuid, sha, nbt.length, nbt)));
         } catch(Exception e) {

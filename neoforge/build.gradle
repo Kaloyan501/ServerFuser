@@ -8,6 +8,11 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
     }
+
+    jar {
+        dependsOn ':protocol:jar'
+        from { zipTree(project(':protocol').tasks.jar.archiveFile) }
+    }
 }
 
 dependencies {

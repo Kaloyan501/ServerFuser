@@ -61,7 +61,7 @@ public class ServerFuser {
                                 .then(Commands.argument("recieverUuid", UuidArgument.uuid())
                                     .then(Commands.argument("playerUuid", UuidArgument.uuid())
                                         .executes(ctx -> {
-                                            UUID playerUuid = UuidArgument.getUuid(ctx, "uuid");
+                                            UUID playerUuid = UuidArgument.getUuid(ctx, "playerUuid");
                                             UUID recieverUuid = UuidArgument.getUuid(ctx, "recieverUuid");
                                             ShardTransfer.sendSaveFile(playerUuid, recieverUuid);
                                             return Command.SINGLE_SUCCESS;

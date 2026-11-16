@@ -2,6 +2,7 @@ package com.kaloyandonev.serverfuser.Messages.Helpers;
 
 import com.kaloyandonev.serverfuser.MessageTypes;
 import com.kaloyandonev.serverfuser.Messages.Handshake;
+import com.kaloyandonev.serverfuser.Messages.*;
 import com.kaloyandonev.serverfuser.Messages.Packet;
 
 import java.io.ByteArrayOutputStream;
@@ -48,6 +49,11 @@ public final class Packets {
         byte id = d.readByte();
         return switch (id) {
             case MessageTypes.HANDSHAKE -> Handshake.read(d);
+            case MessageTypes.CHAT -> Chat.read(d);
+            case MessageTypes.PLAYERDATA -> PlayerData.read(d);
+            case MessageTypes.TRANSFERACK -> TransferAck.read(d);
+            case MessageTypes.ENTITYDATA -> EntityData.read(d);
+            case MessageTypes.HANDSHAKE_RESPONCE -> HandshakeResponce.read(d);
             default -> throw new IOException("unknown packet id " + id);
         };
     }
