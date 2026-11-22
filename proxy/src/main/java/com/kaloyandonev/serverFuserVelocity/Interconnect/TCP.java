@@ -1,9 +1,6 @@
 package com.kaloyandonev.serverFuserVelocity.Interconnect;
 
-import com.kaloyandonev.serverFuserVelocity.PacketHandler.EntityHandler;
-import com.kaloyandonev.serverFuserVelocity.PacketHandler.HandshakeHandler;
-import com.kaloyandonev.serverFuserVelocity.PacketHandler.PlayerHandler;
-import com.kaloyandonev.serverFuserVelocity.PacketHandler.TransferAckHandler;
+import com.kaloyandonev.serverFuserVelocity.PacketHandler.*;
 import com.kaloyandonev.serverfuser.MessageTypes;
 import com.kaloyandonev.serverfuser.Messages.*;
 import com.kaloyandonev.serverfuser.Messages.Helpers.Packets;
@@ -22,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 import static com.kaloyandonev.serverFuserVelocity.Interconnect.InterconnectRuntimeConstants.CONNECTIONS;
 import static com.kaloyandonev.serverFuserVelocity.Interconnect.InterconnectRuntimeConstants.PENDING;
 import static com.kaloyandonev.serverFuserVelocity.ServerFuserVelocity.proxy;
+import static com.kaloyandonev.serverFuserVelocity.TransferRouter.failToSender;
 
 public class TCP {
 
@@ -37,51 +35,7 @@ public class TCP {
         return false;
     }
 
-    public static void reject(Socket socket, UUID shardId, String status) {
-        System.out.println(status);
-        try {
-            ShardConnection c = new ShardConnection(shardId, socket);
-            c.send(Packets.encode(new HandshakeResponce(status)));
-        }
-        catch (IOException ignored) { }
-    }
-
-    public static void forward(ShardConnection from, UUID receiver, long txId, byte[] body) throws IOException {
-        ShardConnection target = CONNECTIONS.get(receiver);
-        if (target == null || receiver.equals(from.shardId())) {
-            from.send(Packets.encode(new TransferAck(from.shardId(), txId, MessageTypes.STATUS_TARGET_OFFLINE)));
-            return;
-        }
-        ByteBuffer.wrap(body)                       // overwrite the sender slot with the real sender
-                .putLong(1, from.shardId().getMostSignificantBits())
-                .putLong(9, from.shardId().getLeastSignificantBits());
-
-        var key = new InterconnectRuntimeConstants.TxKey(from.shardId(), txId);
-        PENDING.put(key, new InterconnectRuntimeConstants.Pending(receiver, System.currentTimeMillis() + 30_000));
-        try {
-            target.send(body);
-        } catch (IOException e) {
-            PENDING.remove(key);
-            from.send(Packets.encode(new TransferAck(from.shardId(), txId, MessageTypes.STATUS_TARGET_OFFLINE)));
-        }
-    }
-
-    static void startSweeper() {
-        var ses = Executors.newSingleThreadScheduledExecutor(r -> { var t = new Thread(r, "tx-sweeper"); t.setDaemon(true); return t; });
-        ses.scheduleAtFixedRate(() -> {
-            long now = System.currentTimeMillis();
-            PENDING.forEach((k, v) -> {
-                if (v.expiresAtMs() < now && PENDING.remove(k, v)) failToSender(k, MessageTypes.STATUS_TIMEOUT);
-            });
-        }, 1, 1, TimeUnit.SECONDS);
-    }
-
-    private static void failToSender(InterconnectRuntimeConstants.TxKey k, byte status) {
-        ShardConnection s = CONNECTIONS.get(k.sender());
-        if (s != null) try { s.send(Packets.encode(new TransferAck(k.sender(), k.txId(), status))); } catch (IOException ignored) {}
-    }
-
-    public static void CreateInterconnectSocket(int port) throws IOException{
+    public static void createInterconnectSocket(int port) throws IOException{
         try (ServerSocket serverSocket = new ServerSocket(port)) {
             System.out.println("[ServerFuser Interconnect] Listening on port " + port + " ...");
             while (true) {
@@ -124,7 +78,7 @@ public class TCP {
                         conn = HandshakeHandler.handle(h, socket);
                     }
                     case Chat c -> {
-                        System.out.println(String.format("Got chat message from shard: %s %s %s %s", c.senderUUID(), c.senderName(), c.chatTypeKey(), c.chatComponentJSON()));
+                        ChatHandler.handle(c);
                     }
                     case EntityData e -> {
                         EntityHandler.handle(e, conn, body);

@@ -2,6 +2,7 @@ package com.kaloyandonev.serverFuserVelocity;
 
 import com.google.inject.Inject;
 import com.kaloyandonev.serverFuserVelocity.Interconnect.TCP;
+import com.kaloyandonev.serverfuser.Messages.TransferAck;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.plugin.Plugin;
@@ -24,7 +25,8 @@ public class ServerFuserVelocity {
     public void onProxyInitialization(ProxyInitializeEvent event) {
         Thread t = new Thread(() -> {
             try {
-                TCP.CreateInterconnectSocket(6666);
+                TCP.createInterconnectSocket(6666);
+                TransferRouter.startSweeper();
             } catch (Exception e) {
                 logger.error("Interconnect has blown up.", e);
             }

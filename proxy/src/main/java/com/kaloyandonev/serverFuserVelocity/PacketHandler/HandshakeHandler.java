@@ -11,9 +11,9 @@ import java.io.IOException;
 import java.net.Socket;
 import java.security.MessageDigest;
 import java.util.HexFormat;
+import java.util.UUID;
 
 import static com.kaloyandonev.serverFuserVelocity.Interconnect.InterconnectRuntimeConstants.CONNECTIONS;
-import static com.kaloyandonev.serverFuserVelocity.Interconnect.TCP.reject;
 
 public class HandshakeHandler {
     public static ShardConnection handle(Handshake h, Socket socket) throws IOException {
@@ -62,5 +62,14 @@ public class HandshakeHandler {
         System.out.println("Handshake from shard " + h.shardUUID() + " with protocolVer " + h.protocolVer()
                 + " and dataVer " + h.dataVer() + " and modHashSet " + HexFormat.of().formatHex(h.modHashSet()));
         return conn;
+    }
+
+    private static void reject(Socket socket, UUID shardId, String status) {
+        System.out.println(status);
+        try {
+            ShardConnection c = new ShardConnection(shardId, socket);
+            c.send(Packets.encode(new HandshakeResponce(status)));
+        }
+        catch (IOException ignored) { }
     }
 }

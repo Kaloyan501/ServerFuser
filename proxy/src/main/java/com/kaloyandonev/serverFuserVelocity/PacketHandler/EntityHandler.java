@@ -12,7 +12,7 @@ import java.security.MessageDigest;
 import java.util.HexFormat;
 
 import static com.kaloyandonev.serverFuserVelocity.Interconnect.InterconnectRuntimeConstants.CONNECTIONS;
-import static com.kaloyandonev.serverFuserVelocity.Interconnect.TCP.forward;
+import static com.kaloyandonev.serverFuserVelocity.TransferRouter.forward;
 
 public class EntityHandler {
     public static void handle(EntityData e, ShardConnection conn, byte[] body) throws IOException {
