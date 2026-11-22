@@ -6,7 +6,6 @@ import com.kaloyandonev.serverfuser.Messages.EntityData;
 import com.kaloyandonev.serverfuser.Messages.Helpers.Packets;
 import com.kaloyandonev.serverfuser.Messages.PlayerData;
 import com.kaloyandonev.serverfuser.Transfers;
-import net.minecraft.SharedConstants;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtUtils;
@@ -17,10 +16,7 @@ import net.minecraft.world.entity.Entity;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
@@ -28,8 +24,6 @@ import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static com.kaloyandonev.serverfuser.MessageTypes.statusName;
-import static com.kaloyandonev.serverfuser.ServerFuser.interconnectClient;
-import com.kaloyandonev.serverfuser.config.Config;
 
 public class ShardTransfer {
 

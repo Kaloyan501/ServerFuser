@@ -1,6 +1,8 @@
 package com.kaloyandonev.serverfuser.Messages.Helpers;
 
-import java.io.*;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.UUID;
 
 public final class Wire {
