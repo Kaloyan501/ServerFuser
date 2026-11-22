@@ -7,6 +7,10 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 
 public record HandshakeResponce(String status) implements Packet {
+    /**
+     * Implementation of the HandshakeResponce ServerFuser packet type. See Javadoc on Packets for more info about how to read/write a packet.
+     * @param status - status of the handshake
+     */
     public HandshakeResponce {
 
     }

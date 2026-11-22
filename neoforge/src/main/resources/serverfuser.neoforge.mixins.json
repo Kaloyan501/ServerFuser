@@ -6,9 +6,7 @@
   "mixins": [
     "BroadcastChatMessage"
   ],
-  "client": [
-    "MixinTitleScreen"
-  ],
+  "client": [],
   "server": [],
   "injectors": {
     "defaultRequire": 1

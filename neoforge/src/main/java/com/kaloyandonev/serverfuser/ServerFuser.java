@@ -2,7 +2,9 @@ package com.kaloyandonev.serverfuser;
 
 
 import com.kaloyandonev.serverfuser.Interconnect.InterconnectClient;
-import com.kaloyandonev.serverfuser.helpers.transfer.ShardTransfer;
+import com.kaloyandonev.serverfuser.helpers.transfer.TransferHandlers.EntityTransfer;
+import com.kaloyandonev.serverfuser.helpers.transfer.TransferHandlers.PlayerTransfer;
+import com.kaloyandonev.serverfuser.helpers.transfer.TransferHelper;
 import com.mojang.brigadier.Command;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
@@ -28,20 +30,11 @@ public class ServerFuser {
     public static InterconnectClient interconnectClient =
             new InterconnectClient("127.0.0.1", 6666, () -> {
                 MinecraftServer s = ServerLifecycleHooks.getCurrentServer();
-                if (s != null) s.halt(false);     // rejected later, while running
-                else fatal = true;                // rejected during mod loading: startup will check
+                if (s != null) s.halt(false);
+                else fatal = true;
             });
 
     public ServerFuser(IEventBus eventBus) {
-
-        // This method is invoked by the NeoForge mod loader when it is ready
-        // to load your mod. You can access NeoForge and Common code in this
-        // project.
-
-        // Use NeoForge to bootstrap the Common mod.
-        Constants.LOG.info("Hello NeoForge world!");
-        CommonClass.init();
-
         try {
             byte[] modSetHash = ModSetHash.compute(FMLPaths.MODSDIR.get());
             interconnectClient.start(modSetHash, ServerLifecycleHooks::getCurrentServer);
@@ -61,7 +54,7 @@ public class ServerFuser {
                                         .executes(ctx -> {
                                             UUID playerUuid = UuidArgument.getUuid(ctx, "playerUuid");
                                             UUID recieverUuid = UuidArgument.getUuid(ctx, "recieverUuid");
-                                            ShardTransfer.sendSaveFile(playerUuid, recieverUuid);
+                                            PlayerTransfer.sendSaveFile(playerUuid, recieverUuid);
                                             return Command.SINGLE_SUCCESS;
                                         }))))
                         .then(Commands.literal("sendMob")
@@ -70,7 +63,7 @@ public class ServerFuser {
                                         .executes(ctx -> {
                                             UUID entityUuid = EntityArgument.getEntity(ctx, "entity").getUUID();
                                             UUID recieverUuid = UuidArgument.getUuid(ctx, "recieverUuid");
-                                            ShardTransfer.sendEntity(entityUuid, recieverUuid);
+                                            EntityTransfer.sendEntity(entityUuid, recieverUuid);
                                             return Command.SINGLE_SUCCESS;
                                         }))))
         );
