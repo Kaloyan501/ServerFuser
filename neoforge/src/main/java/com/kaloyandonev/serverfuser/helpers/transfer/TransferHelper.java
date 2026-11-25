@@ -8,7 +8,7 @@ import java.util.UUID;
 
 public class TransferHelper {
 
-    private static Entity findEntity(MinecraftServer s, UUID uuid) {
+    public static Entity findEntity(MinecraftServer s, UUID uuid) {
         for (ServerLevel level : s.getAllLevels()) {
             Entity e = level.getEntity(uuid);
             if (e != null) return e;
