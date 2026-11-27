@@ -11,6 +11,7 @@ repositories {
 dependencies {
     compileOnly("com.velocitypowered:velocity-api:3.5.0-SNAPSHOT")
     annotationProcessor("com.velocitypowered:velocity-api:3.5.0-SNAPSHOT")
+    implementation("org.spongepowered:configurate-yaml:4.2.0")
     implementation(project(":protocol"))
 }
 
@@ -20,8 +21,22 @@ java {
 
 tasks.jar {
     dependsOn(configurations.runtimeClasspath)
-    from({ configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) } })
+
+    from({
+        configurations.runtimeClasspath.get().map {
+            if (it.isDirectory) it else zipTree(it)
+        }
+    })
+
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    exclude(
+        "META-INF/*.SF",
+        "META-INF/*.DSA",
+        "META-INF/*.RSA",
+        "META-INF/*.EC",
+        "META-INF/SIG-*"
+    )
 }
 
 tasks {
