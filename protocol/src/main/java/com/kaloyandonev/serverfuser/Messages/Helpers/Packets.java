@@ -22,7 +22,7 @@ byte[] hs = Packets.encode(new Handshake(shardId, MessageTypes.PROTOCOL_VER, Sha
  *  out.flush();
  * }
  * That will append the length of the packet at the start of it (the standard of the protocol), then append the actual payload and send it.
- *
+ * <p>
  * To read the Packet, do
  * {@snippet :
  * Handshake hs = Handshake.read(d);

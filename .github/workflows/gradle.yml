@@ -45,7 +45,7 @@ jobs:
     #     gradle-version: '8.9'
     #
     # - name: Build with Gradle 8.9
-    #   run: gradle build
+    #   run: Gradle build
 
   dependency-submission:
 

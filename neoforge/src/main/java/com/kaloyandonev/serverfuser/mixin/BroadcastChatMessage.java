@@ -1,8 +1,9 @@
 package com.kaloyandonev.serverfuser.mixin;
 
+import com.kaloyandonev.serverfuser.Constants;
+import com.kaloyandonev.serverfuser.Interconnect.InterconnectClient;
 import com.kaloyandonev.serverfuser.Messages.Chat;
 import com.kaloyandonev.serverfuser.Messages.Helpers.Packets;
-import com.kaloyandonev.serverfuser.ServerFuser;
 import net.minecraft.network.chat.ChatType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.PlayerChatMessage;
@@ -50,9 +51,9 @@ public abstract class BroadcastChatMessage {
 
         try {
             Chat packet = new Chat(uuid, name, chatTypeKey, Component.Serializer.toJson(message.decoratedContent(), this.server.registryAccess()));
-            ServerFuser.interconnectClient.send(Packets.encode(packet));
+            InterconnectClient.send(Packets.encode(packet));
         } catch (IOException e) {
-            e.printStackTrace();
+            Constants.LOG.error(e.toString());
         }
 
         ci.cancel();

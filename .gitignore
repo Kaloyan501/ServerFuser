@@ -18,7 +18,6 @@ bin
 out
 *.ipr
 *.iws
-*.iml
 .idea/*
 !.idea/scopes
 

@@ -1,5 +1,6 @@
 package com.kaloyandonev.serverfuser.helpers.transfer.TransferHandlers;
 
+import com.kaloyandonev.serverfuser.Constants;
 import com.kaloyandonev.serverfuser.Interconnect.InterconnectClient;
 import com.kaloyandonev.serverfuser.MessageTypes;
 import com.kaloyandonev.serverfuser.Messages.EntityData;
@@ -49,7 +50,8 @@ public class EntityTransfer {
             byte[] nbt = nbtOut.toByteArray();
 
             byte[] sha = MessageDigest.getInstance("SHA-256").digest(nbt);
-            System.out.println("send: nbtLen=" + nbt.length + " sha=" + HexFormat.of().formatHex(sha));
+
+            Constants.LOG.info("send: nbtLen={} sha={}", nbt.length, HexFormat.of().formatHex(sha));
 
             long txId = ThreadLocalRandom.current().nextLong();
             var result = Transfers.register(txId);
@@ -63,11 +65,14 @@ public class EntityTransfer {
                 } else {
                     System.out.println("transfer " + txId + " failed: " + statusName(status));
                 }
-            }).exceptionally(t -> { System.out.println("transfer " + txId + " gave up: " + t); return null; });
+            }).exceptionally(t -> {
+                Constants.LOG.error("transfer {} gave up: {}", txId, t);
+                return null;
+            });
 
             InterconnectClient.send(Packets.encode(new EntityData(senderUuid, recieverUuid, txId, entityUuid, sha, nbt.length, nbt)));
         } catch(Exception e) {
-            e.printStackTrace();
+            Constants.LOG.error(e.toString());
         }
     }
 }

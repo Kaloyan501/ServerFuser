@@ -1,5 +1,6 @@
 package com.kaloyandonev.serverfuser.platform.services;
 
+@SuppressWarnings("ALL")
 public interface IPlatformHelper {
 
     /**

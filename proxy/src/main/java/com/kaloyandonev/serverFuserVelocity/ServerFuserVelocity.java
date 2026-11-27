@@ -9,10 +9,8 @@ import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import org.slf4j.Logger;
 import org.spongepowered.configurate.ConfigurationNode;
-import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 
 @Plugin(id = "serverfuservelocity", name = "ServerFuserVelocity", version = "1.0-SNAPSHOT")
@@ -36,7 +34,7 @@ public class ServerFuserVelocity {
         try {
             config = Config.loadConfig(dataDir);
         }catch (IOException e) {
-            e.printStackTrace();
+            ServerFuserVelocity.logger.error(e.toString());
         }
         Thread t = new Thread(() -> {
             try {

@@ -1,6 +1,7 @@
 package com.kaloyandonev.serverFuserVelocity.PacketHandler;
 
 import com.kaloyandonev.serverFuserVelocity.Interconnect.ShardConnection;
+import com.kaloyandonev.serverFuserVelocity.ServerFuserVelocity;
 import com.kaloyandonev.serverfuser.MessageTypes;
 import com.kaloyandonev.serverfuser.Messages.EntityData;
 import com.kaloyandonev.serverfuser.Messages.Helpers.Packets;
@@ -11,14 +12,12 @@ import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 
-import static com.kaloyandonev.serverFuserVelocity.Interconnect.InterconnectRuntimeConstants.CONNECTIONS;
 import static com.kaloyandonev.serverFuserVelocity.TransferRouter.forward;
 
 public class EntityHandler {
     public static void handle(EntityData e, ShardConnection conn, byte[] body) throws IOException {
-        ShardConnection target = CONNECTIONS.get(e.recieverUUID());
 
-        System.out.println("send: nbtLen=" + e.nbt().length + " sha=" + HexFormat.of().formatHex(e.sha()));
+        ServerFuserVelocity.logger.info("send: nbtLen={} sha={}", e.nbt().length, HexFormat.of().formatHex(e.sha()));
 
         try {
             byte[] calcSha = MessageDigest.getInstance("SHA-256").digest(e.nbt());
@@ -29,7 +28,7 @@ public class EntityHandler {
             }
 
         } catch (Exception o) {
-            o.printStackTrace();
+            ServerFuserVelocity.logger.error(o.toString());
             return;
         }
 
@@ -39,7 +38,7 @@ public class EntityHandler {
 
         forward(conn, e.recieverUUID(), e.txID(), body);
 
-        System.out.println(String.format("Got mob data for entityUUID: %s with length %d and sha %s", e.entityUUID().toString(), e.nbtLen(), HexFormat.of().formatHex(e.sha())));
-        System.out.println(HexFormat.of().formatHex(e.nbt()));
+        ServerFuserVelocity.logger.info("Got mob data for entityUUID: {} with length {} and sha {}\n", e.entityUUID().toString(), e.nbtLen(), HexFormat.of().formatHex(e.sha()));
+        ServerFuserVelocity.logger.info(HexFormat.of().formatHex(e.nbt()));
     }
 }

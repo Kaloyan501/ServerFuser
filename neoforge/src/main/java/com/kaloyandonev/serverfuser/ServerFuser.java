@@ -5,7 +5,6 @@ import com.kaloyandonev.serverfuser.Interconnect.InterconnectClient;
 import com.kaloyandonev.serverfuser.config.ConfigNeo;
 import com.kaloyandonev.serverfuser.helpers.transfer.TransferHandlers.EntityTransfer;
 import com.kaloyandonev.serverfuser.helpers.transfer.TransferHandlers.PlayerTransfer;
-import com.kaloyandonev.serverfuser.helpers.transfer.TransferHelper;
 import com.mojang.brigadier.Command;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
@@ -28,7 +27,6 @@ import java.util.UUID;
 @Mod(Constants.MOD_ID)
 @EventBusSubscriber(modid = Constants.MOD_ID)
 public class ServerFuser {
-
     static volatile boolean fatal = false;
 
     public static volatile InterconnectClient interconnectClient;
@@ -50,7 +48,7 @@ public class ServerFuser {
             byte[] modSetHash = ModSetHash.compute(FMLPaths.MODSDIR.get());
             interconnectClient.start(modSetHash, ServerLifecycleHooks::getCurrentServer);
         } catch (Exception e) {
-            e.printStackTrace();
+            Constants.LOG.error(e.toString());
         }
     }
 

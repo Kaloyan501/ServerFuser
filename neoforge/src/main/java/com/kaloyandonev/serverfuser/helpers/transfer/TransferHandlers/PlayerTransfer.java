@@ -1,5 +1,6 @@
 package com.kaloyandonev.serverfuser.helpers.transfer.TransferHandlers;
 
+import com.kaloyandonev.serverfuser.Constants;
 import com.kaloyandonev.serverfuser.Interconnect.InterconnectClient;
 import com.kaloyandonev.serverfuser.Messages.Helpers.Packets;
 import com.kaloyandonev.serverfuser.Messages.PlayerData;
@@ -42,7 +43,7 @@ public class PlayerTransfer {
 
                 InterconnectClient.send(Packets.encode(new PlayerData(senderUuid, recieverUuid, txId, playerUuid, sha, nbt.length, nbt)));
             } catch (IOException | NoSuchAlgorithmException e) {
-                e.printStackTrace();
+                Constants.LOG.error(e.toString());
             }
         });
     }

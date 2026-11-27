@@ -1,5 +1,6 @@
 package com.kaloyandonev.serverfuser.Interconnect;
 
+import com.kaloyandonev.serverfuser.Constants;
 import com.kaloyandonev.serverfuser.MessageTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtAccounter;
@@ -27,7 +28,7 @@ public class AfterTransferHandler {
                         ? MessageTypes.STATUS_OK
                         : MessageTypes.STATUS_WRITE_FAILED;               // add a dedicated SPAWN_FAILED later
             } catch (Exception ex) {
-                ex.printStackTrace();
+                Constants.LOG.error(ex.toString());
                 status = MessageTypes.STATUS_WRITE_FAILED;
             }
             ack.accept(status);                // send TRANSFER_ACK from here, after the result is known

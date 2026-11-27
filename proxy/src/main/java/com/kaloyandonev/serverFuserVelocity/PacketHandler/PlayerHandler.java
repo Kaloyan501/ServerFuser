@@ -1,5 +1,6 @@
 package com.kaloyandonev.serverFuserVelocity.PacketHandler;
 
+import com.kaloyandonev.serverFuserVelocity.ServerFuserVelocity;
 import com.kaloyandonev.serverfuser.Messages.PlayerData;
 
 import java.io.IOException;
@@ -16,11 +17,11 @@ public class PlayerHandler {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            ServerFuserVelocity.logger.error(e.toString());
             return;
         }
 
-        System.out.println(String.format("Got player data for playerUUID: %s with length %d and sha %s", pd.playerUUID().toString(), pd.nbtLen(), HexFormat.of().formatHex(pd.sha())));
-        System.out.println(HexFormat.of().formatHex(pd.nbt()));
+        ServerFuserVelocity.logger.info("Got player data for playerUUID: {} with length {} and sha {}\n", pd.playerUUID().toString(), pd.nbtLen(), HexFormat.of().formatHex(pd.sha()));
+        ServerFuserVelocity.logger.info(HexFormat.of().formatHex(pd.nbt()));
     }
 }

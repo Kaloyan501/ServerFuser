@@ -24,14 +24,11 @@ public final class InterconnectClient {
     private final int port;
     private static final BlockingQueue<byte[]> outbox = new LinkedBlockingQueue<>(1024); // bounded
     private volatile boolean running = true;
-    private Thread thread;
 
     private static final java.util.concurrent.atomic.AtomicInteger IDS =
             new java.util.concurrent.atomic.AtomicInteger();
     private final int id = IDS.incrementAndGet();
     private final UUID shardId;
-
-    private volatile boolean accepted = false;
 
     private final Runnable onFatal;
 
@@ -39,7 +36,8 @@ public final class InterconnectClient {
         this.host = host;
         this.port = port;
         this.onFatal = onFatal;
-        System.out.println("[ServerFuser #" + id + "] created");
+
+        Constants.LOG.info("[ServerFuser #{}] created", id);
         try {
             this.shardId = Config.loadOrCreateShardId(Path.of("config", "serverfuser-shard-id.txt"));
         } catch (IOException e) {
@@ -48,20 +46,17 @@ public final class InterconnectClient {
     }
 
     public void start(byte[] modHashSet, Supplier<MinecraftServer> server) {
-        System.out.println("[ServerFuser #" + id + "] client started: " + System.identityHashCode(this));
-        thread = new Thread(() -> runLoop(modHashSet, server), "ServerFuser-Interconnect");
+        Constants.LOG.info("[ServerFuser #{}] client started: {}", id, System.identityHashCode(this));
+        Thread thread = new Thread(() -> runLoop(modHashSet, server), "ServerFuser-Interconnect");
         thread.setDaemon(true);
         thread.start();
     }
 
-    public void stop() {
-        running = false;
-        if (thread != null) thread.interrupt();
-    }
-
-    /** Safe to call from any thread. Returns false if the buffer is full. */
-    public static boolean send(byte[] message) {
-        return outbox.offer(message);
+    /**
+     * Safe to call from any thread. Returns false if the buffer is full.
+     */
+    public static void send(byte[] message) {
+        outbox.offer(message);
     }
 
     private void runLoop(byte[] modHashSet, Supplier<MinecraftServer> server) {
@@ -97,7 +92,7 @@ public final class InterconnectClient {
                 System.out.println("[ServerFuser #" + id + "]  write loop exited: running=" + running
                         + " readerAlive=" + reader.isAlive());
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                Constants.LOG.error(e.toString());
                 return;
             } catch (Throwable t) {
                 // connection failed or dropped: fall through to backoff
@@ -106,7 +101,8 @@ public final class InterconnectClient {
             finally {
                 System.out.println("[ServerFuser #" + id + "]  reader thread exiting");
             }
-            try { Thread.sleep(backoff); } catch (InterruptedException e) { return; }
+            try { //noinspection BusyWait
+                Thread.sleep(backoff); } catch (InterruptedException e) { return; }
             backoff = Math.min(backoff * 2, 15000);
         }
     }
@@ -115,7 +111,7 @@ public final class InterconnectClient {
         try {
             send(Packets.encode(new TransferAck(sender, txId, status)));
         } catch (IOException ex) {
-            ex.printStackTrace();
+            Constants.LOG.error(ex.toString());
         }
     }
 
@@ -136,28 +132,20 @@ public final class InterconnectClient {
         }
     }
 
-    private void onReadPacket(Packet p, Supplier<MinecraftServer> server) throws IOException {
+    private void onReadPacket(Packet p, Supplier<MinecraftServer> server) {
         switch (p) {
             case HandshakeResponce r -> {
                 if (r.status().equals(MessageTypes.HS_OK)) {
-                    accepted = true;
-                    System.out.println("[ServerFuser] Handshake accepted");
                     Constants.LOG.error("[ServerFuser] Handshake accepted");
                 } else {
-                    System.out.println("[ServerFuser] Rejected by proxy: " + r.status());
-                    Constants.LOG.error("[ServerFuser] Rejected by proxy: " + r.status());
+                    Constants.LOG.error("[ServerFuser] Rejected by proxy: {}", r.status());
                     running = false;       // stop retrying; the config has to be fixed
                     onFatal.run();
                 }
             }
-            case EntityData e -> {
-                AfterTransferHandler.spawnEntity(e.nbt(), status -> sendAck(e.senderUUID(), e.txID(), status), server.get());
-            }
+            case EntityData e -> AfterTransferHandler.spawnEntity(e.nbt(), status -> sendAck(e.senderUUID(), e.txID(), status), server.get());
             case TransferAck a -> Transfers.complete(a.txId(), a.status());
             default -> System.out.println("[ServerFuser] unexpected packet " + p);
         }
-    }
-    private void onMessage(String msg) {
-        // Do something.
     }
 }

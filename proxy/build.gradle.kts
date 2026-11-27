@@ -3,20 +3,22 @@ plugins {
     id("xyz.jpenilla.run-velocity") version "3.1.0"
 }
 
+
+
 repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
 }
 
 dependencies {
-    compileOnly("com.velocitypowered:velocity-api:3.5.0-SNAPSHOT")
-    annotationProcessor("com.velocitypowered:velocity-api:3.5.0-SNAPSHOT")
+    compileOnly("com.velocitypowered:velocity-api:4.2.1-SNAPSHOT")
+    annotationProcessor("com.velocitypowered:velocity-api:4.2.1-SNAPSHOT")
     implementation("org.spongepowered:configurate-yaml:4.2.0")
     implementation(project(":protocol"))
 }
 
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    toolchain.languageVersion = JavaLanguageVersion.of(25)
 }
 
 tasks.jar {
