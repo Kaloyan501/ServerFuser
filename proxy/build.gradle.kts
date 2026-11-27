@@ -1,3 +1,5 @@
+@file:Suppress("SpellCheckingInspection")
+
 plugins {
     id("java-library")
     id("xyz.jpenilla.run-velocity") version "3.1.0"

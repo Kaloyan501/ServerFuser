@@ -5,7 +5,7 @@ import com.kaloyandonev.serverFuserVelocity.Interconnect.ShardConnection;
 import com.kaloyandonev.serverFuserVelocity.ServerFuserVelocity;
 import com.kaloyandonev.serverfuser.MessageTypes;
 import com.kaloyandonev.serverfuser.Messages.Handshake;
-import com.kaloyandonev.serverfuser.Messages.HandshakeResponce;
+import com.kaloyandonev.serverfuser.Messages.HandshakeResponse;
 import com.kaloyandonev.serverfuser.Messages.Helpers.Packets;
 
 import java.io.IOException;
@@ -59,7 +59,7 @@ public class HandshakeHandler {
         ShardConnection conn = new ShardConnection(h.shardUUID(), socket);
         ShardConnection old = CONNECTIONS.put(h.shardUUID(), conn);
         if (old != null) old.close();
-        conn.send(Packets.encode(new HandshakeResponce(MessageTypes.HS_OK)));
+        conn.send(Packets.encode(new HandshakeResponse(MessageTypes.HS_OK)));
         ServerFuserVelocity.logger.info("Handshake from shard {} with protocolVer {} and dataVer {} and modHashSet {}", h.shardUUID(), h.protocolVer(), h.dataVer(), HexFormat.of().formatHex(h.modHashSet()));
         return conn;
     }
@@ -68,7 +68,7 @@ public class HandshakeHandler {
         ServerFuserVelocity.logger.info(status);
         try {
             ShardConnection c = new ShardConnection(shardId, socket);
-            c.send(Packets.encode(new HandshakeResponce(status)));
+            c.send(Packets.encode(new HandshakeResponse(status)));
         }
         catch (IOException ignored) { }
     }

@@ -18,4 +18,4 @@
     - [ ] Make a way for trains to be able to go between servers.
     - [ ] Decide what do to when a train is in the middle of a server border.
 - [ ] Map Compat
-  - [ ] Make map mods belive the server is 1 big server instead of multiple smaller ones.
+  - [ ] Make map mods believe the server is 1 big server instead of multiple smaller ones.

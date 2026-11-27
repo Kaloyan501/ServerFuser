@@ -58,20 +58,20 @@ public class ServerFuser {
                 Commands.literal("serverfuser")
                         .requires(src -> src.hasPermission(4))
                         .then(Commands.literal("sendPlayerFile")
-                                .then(Commands.argument("recieverUuid", UuidArgument.uuid())
+                                .then(Commands.argument("receiverUuid", UuidArgument.uuid())
                                     .then(Commands.argument("playerUuid", UuidArgument.uuid())
                                         .executes(ctx -> {
                                             UUID playerUuid = UuidArgument.getUuid(ctx, "playerUuid");
-                                            UUID recieverUuid = UuidArgument.getUuid(ctx, "recieverUuid");
+                                            UUID recieverUuid = UuidArgument.getUuid(ctx, "receiverUuid");
                                             PlayerTransfer.sendSaveFile(playerUuid, recieverUuid);
                                             return Command.SINGLE_SUCCESS;
                                         }))))
                         .then(Commands.literal("sendMob")
-                                .then(Commands.argument("recieverUuid", UuidArgument.uuid())
+                                .then(Commands.argument("receiverUuid", UuidArgument.uuid())
                                     .then(Commands.argument("entity", EntityArgument.entity())
                                         .executes(ctx -> {
                                             UUID entityUuid = EntityArgument.getEntity(ctx, "entity").getUUID();
-                                            UUID recieverUuid = UuidArgument.getUuid(ctx, "recieverUuid");
+                                            UUID recieverUuid = UuidArgument.getUuid(ctx, "receiverUuid");
                                             EntityTransfer.sendEntity(entityUuid, recieverUuid);
                                             return Command.SINGLE_SUCCESS;
                                         }))))

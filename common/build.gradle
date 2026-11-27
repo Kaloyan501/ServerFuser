@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id 'multiloader-common'
+    //noinspection SpellCheckingInspection
     id 'net.neoforged.moddev'
 }
 
@@ -13,6 +14,7 @@ java {
 neoForge {
     neoFormVersion = neo_form_version
     // Automatically enable AccessTransformers if the file exists
+    //noinspection SpellCheckingInspection
     def at = file('src/main/resources/META-INF/accesstransformer.cfg')
     if (at.exists()) {
         accessTransformers.from(at.absolutePath)
@@ -28,7 +30,9 @@ dependencies {
     implementation project(':protocol')
     compileOnly "org.spongepowered:mixin:0.8.5"
     // fabric and neoforge both bundle mixinextras, so it is safe to use it in common
+    //noinspection SpellCheckingInspection
     compileOnly "io.github.llamalad7:mixinextras-common:0.3.5"
+    //noinspection SpellCheckingInspection
     annotationProcessor "io.github.llamalad7:mixinextras-common:0.3.5"
 }
 

@@ -134,7 +134,7 @@ public final class InterconnectClient {
 
     private void onReadPacket(Packet p, Supplier<MinecraftServer> server) {
         switch (p) {
-            case HandshakeResponce r -> {
+            case HandshakeResponse r -> {
                 if (r.status().equals(MessageTypes.HS_OK)) {
                     Constants.LOG.error("[ServerFuser] Handshake accepted");
                 } else {

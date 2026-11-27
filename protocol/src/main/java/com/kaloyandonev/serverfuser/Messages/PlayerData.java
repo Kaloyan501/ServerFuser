@@ -17,7 +17,7 @@ public record PlayerData(UUID senderUUID, UUID recieverUUID, long txID, UUID pla
      * @param txID Unique transmit ID for tracking if the player transfer has completed successfully.
      * @param playerUUID UUID of the player
      * @param sha SHA256 of the NBT
-     * @param nbtLen Lenght of the NBT
+     * @param nbtLen Length of the NBT
      * @param nbt Byte array of the NBT
      */
     public PlayerData {

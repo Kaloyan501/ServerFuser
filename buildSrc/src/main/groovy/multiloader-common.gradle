@@ -36,7 +36,8 @@ repositories {
                     url = 'https://maven.neoforged.net/releases'
                 }
         )
-        filter { includeGroup('org.parchmentmc.data') }
+        filter { //noinspection SpellCheckingInspection
+            includeGroup('org.parchmentmc.data') }
     }
     maven {
         name = 'BlameJared'

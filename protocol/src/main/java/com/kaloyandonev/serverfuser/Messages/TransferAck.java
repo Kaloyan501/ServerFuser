@@ -13,7 +13,7 @@ public record TransferAck(UUID senderUUID, long txId, byte status) implements Pa
     /**
      * Implementation for the TransferAck ServerFuser packet type. Used to ack a transfer of a player/entity.
      * See Javadoc on Packets for more info about how to read/write a packet.
-     * @param senderUUID UUID of the original message that is being ack'd
+     * @param senderUUID UUID of the sender of the original message being acknowledged.
      * @param txId Unique ID for each transmission by a shard
      * @param status Status of the transfer
      */

@@ -51,7 +51,7 @@ public final class Packets {
             case MessageTypes.PLAYERDATA -> PlayerData.read(d);
             case MessageTypes.TRANSFERACK -> TransferAck.read(d);
             case MessageTypes.ENTITYDATA -> EntityData.read(d);
-            case MessageTypes.HANDSHAKE_RESPONCE -> HandshakeResponce.read(d);
+            case MessageTypes.HANDSHAKE_RESPONCE -> HandshakeResponse.read(d);
             default -> throw new IOException("unknown packet id " + id);
         };
     }
